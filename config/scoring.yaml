@@ -9,6 +9,12 @@ weights:
 
 recency:
   half_life_hours: 24     # この時間で recency 成分が半減
+  # kind 別の上書き。論文は投稿から数日経っているのが常態で、
+  # モデルも公開直後に話題化するとは限らないため半減期を長く取る。
+  half_life_hours_by_kind:
+    paper: 72
+    model: 72
+    repo: 168
 
 popularity:
   # log スケール正規化: min(1, log10(1+value) / log10(1+saturation))

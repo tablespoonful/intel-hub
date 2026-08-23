@@ -84,6 +84,55 @@ def test_ai_status_threshold():
     assert hot.ai_status == ("pending" if hot.score >= 65 else "none")
 
 
+def test_applicable_components_exclude_unmeasurable():
+    s = scorer()
+    assert s.applicable_components("paper") == {
+        "recency", "source_quality", "relevance", "novelty"}
+    assert "popularity" in s.applicable_components("hn")
+    assert "velocity" not in s.applicable_components("hn")
+    assert {"popularity", "velocity"} <= s.applicable_components("repo")
+
+
+def test_paper_not_capped_by_missing_engagement_metrics():
+    """popularity/velocity を持たない kind が構造的に上限で頭打ちにならないこと。
+
+    これらを 0 として重み付き平均に含めていた頃は、論文の実効上限が約49点となり
+    ai_threshold(65) に永久に到達できなかった。
+    """
+    s = scorer()
+    paper = normalize_item(RawItem(
+        source_id="arxiv", external_id="2608.1", kind="paper",
+        title="A humanoid robot language model for manipulation",
+        published_at=NOW - timedelta(hours=1)))
+    scored = s.score(paper)
+    assert scored.score > s.ai_threshold
+    assert scored.ai_status == "pending"
+    # popularity/velocity を 0 として分母に含めていた頃の上限は 75 だった。
+    assert scored.score > 75
+
+
+def test_paper_uses_longer_half_life():
+    cfg = {**SCORING_CFG, "recency": {"half_life_hours": 24,
+                                      "half_life_hours_by_kind": {"paper": 72}}}
+    s = Scorer(cfg, TOPICS_CFG, QUALITY, now=NOW)
+    assert s.half_life_for("paper") == 72
+    assert s.half_life_for("article") == 24
+
+    old = NOW - timedelta(hours=72)
+    paper = normalize_item(RawItem(source_id="arxiv", external_id="p", kind="paper",
+                                   title="robot llm", published_at=old))
+    article = normalize_item(RawItem(source_id="good-src", external_id="a", kind="article",
+                                     title="robot llm", published_at=old))
+    assert s.recency(paper) > s.recency(article)
+
+
+def test_engagement_kinds_still_reward_popularity():
+    s = scorer()
+    quiet = s.score(make("robot llm story a", kind="hn", payload={"points": 1}))
+    hot = s.score(make("robot llm story b", kind="hn", payload={"points": 400}))
+    assert hot.score > quiet.score
+
+
 def test_real_config_files_load():
     s = Scorer(cfg.scoring(), cfg.topics(), cfg.source_quality_map(), now=NOW)
     item = s.score(make("NVIDIA announces new humanoid robot foundation model"))

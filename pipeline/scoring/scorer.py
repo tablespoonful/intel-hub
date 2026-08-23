@@ -1,7 +1,8 @@
 """ルールベーススコアリング (AI 前段フィルタ)。
 
-score = 100 * Σ(weight_i * component_i) / Σ(weight_i) - penalties, 0-100 に clamp。
-成分はすべて 0-1。重み・飽和値・閾値は config/scoring.yaml から。
+score = 100 * Σ(w_i * c_i) / Σ(w_i) - penalties, 0-100 に clamp。
+ただし Σ は「その kind で算出可能な成分」のみを走る。成分はすべて 0-1。
+重み・飽和値・閾値は config/scoring.yaml から。
 """
 from __future__ import annotations
 
@@ -10,6 +11,11 @@ from datetime import datetime, timezone
 from typing import Any
 
 from pipeline.normalize.normalizer import NormalizedItem
+
+BASE_COMPONENTS = frozenset({"recency", "source_quality", "relevance", "novelty"})
+# エンゲージメント指標を持つ kind のみ popularity / velocity を算出できる。
+POPULARITY_KINDS = frozenset({"hn", "repo", "model", "video"})
+VELOCITY_KINDS = frozenset({"repo"})
 
 
 def _log_norm(value: float, saturation: float) -> float:
@@ -27,7 +33,11 @@ class Scorer:
         now: datetime | None = None,
     ) -> None:
         self.weights: dict[str, float] = dict(scoring_cfg.get("weights", {}))
-        self.half_life = float(scoring_cfg.get("recency", {}).get("half_life_hours", 24))
+        recency_cfg = scoring_cfg.get("recency", {})
+        self.half_life = float(recency_cfg.get("half_life_hours", 24))
+        self.half_life_by_kind: dict[str, float] = {
+            k: float(v) for k, v in (recency_cfg.get("half_life_hours_by_kind") or {}).items()
+        }
         self.pop_sat: dict[str, float] = dict(scoring_cfg.get("popularity", {}).get("saturation", {}))
         self.vel_sat: dict[str, float] = dict(scoring_cfg.get("velocity", {}).get("saturation", {}))
         self.ai_threshold = float(scoring_cfg.get("ai_threshold", 65))
@@ -39,6 +49,25 @@ class Scorer:
 
     # ---- components ----
 
+    def applicable_components(self, kind: str) -> set[str]:
+        """その kind で算出可能な成分。
+
+        RSS 記事や論文は star 増加数もダウンロード数も持たないため
+        popularity / velocity を構造的に算出できない。これらを 0 として
+        重み付き平均に含めると分母だけが大きくなりスコアが不当に圧縮されるので、
+        分子・分母の双方から外す。
+        """
+        applicable = set(BASE_COMPONENTS)
+        if kind in POPULARITY_KINDS:
+            applicable.add("popularity")
+        if kind in VELOCITY_KINDS:
+            applicable.add("velocity")
+        return applicable
+
+    def half_life_for(self, kind: str) -> float:
+        """kind 別の recency 半減期。論文は投稿から数日経つのが常態なので長くする。"""
+        return self.half_life_by_kind.get(kind, self.half_life)
+
     def recency(self, item: NormalizedItem) -> float:
         ts = item.published_at or item.fetched_at
         if not ts:
@@ -48,7 +77,7 @@ class Scorer:
         except ValueError:
             return 0.0
         age_h = max(0.0, (self.now - dt).total_seconds() / 3600)
-        return math.exp(-math.log(2) * age_h / self.half_life)
+        return math.exp(-math.log(2) * age_h / self.half_life_for(item.kind))
 
     def source_quality(self, item: NormalizedItem) -> float:
         return float(self.quality_map.get(item.source_id, 0.5))
@@ -122,8 +151,9 @@ class Scorer:
             "popularity": self.popularity(item),
             "novelty": self.novelty(item),
         }
-        total_w = sum(self.weights.values()) or 1.0
-        raw = sum(self.weights.get(k, 0) * v for k, v in components.items()) / total_w
+        applicable = self.applicable_components(item.kind)
+        total_w = sum(self.weights.get(k, 0.0) for k in applicable) or 1.0
+        raw = sum(self.weights.get(k, 0.0) * components[k] for k in applicable) / total_w
         score = raw * 100
 
         text = f"{item.title} {item.summary}".lower()
