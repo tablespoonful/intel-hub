@@ -1,0 +1,87 @@
+# 市場シンボル定義。
+# canonical: intel-hub 内部の統一シンボル
+# providers: 優先順で列挙。free provider → broker/paid へ差し替え可能 (MarketDataProvider)
+# 注意:
+#  - 無料データは「監視・分析用途」限定。自動売買の約定判断には使わない。
+#  - Stooq は 2026-08 時点で anti-bot JS 検証により自動取得不可のため不使用 (docs/limitations.md)。
+#  - FX は Frankfurter (ECB 参照レート, 日次)。USDCNH は CNY で代理。
+#  - 指数・金利・商品は FRED (要 FRED_API_KEY, 日次)。
+#  - enabled: false のシンボルは無料の規約準拠ソースが現状無い (将来 broker API で差し替え)。
+symbols:
+  # ---- FX (frankfurter: 日次 ECB 参照レート) ----
+  - { canonical: USDJPY, name: USD/JPY, asset: fx, country: GLOBAL, providers: { frankfurter: "USD/JPY" } }
+  - { canonical: EURUSD, name: EUR/USD, asset: fx, country: GLOBAL, providers: { frankfurter: "EUR/USD" } }
+  - { canonical: EURJPY, name: EUR/JPY, asset: fx, country: GLOBAL, providers: { frankfurter: "EUR/JPY" } }
+  - { canonical: GBPUSD, name: GBP/USD, asset: fx, country: GLOBAL, providers: { frankfurter: "GBP/USD" } }
+  - { canonical: USDCNH, name: USD/CNH (CNY proxy), asset: fx, country: GLOBAL, providers: { frankfurter: "USD/CNY" } }
+  - { canonical: AUDUSD, name: AUD/USD, asset: fx, country: GLOBAL, providers: { frankfurter: "AUD/USD" } }
+
+  # ---- 株式指数 (FRED 日次) ----
+  - { canonical: SPX,    name: S&P 500,    asset: index, country: US, providers: { fred: SP500 } }
+  - { canonical: NDX,    name: NASDAQ 100, asset: index, country: US, providers: { fred: NASDAQ100 } }
+  - { canonical: VIX,    name: VIX,        asset: index, country: US, providers: { fred: VIXCLS } }
+  - { canonical: N225,   name: Nikkei 225, asset: index, country: JP, providers: { fred: NIKKEI225 } }
+  - { canonical: SOX,    name: PHLX Semiconductor, asset: index, country: US, providers: {}, enabled: false }
+  - { canonical: RUT,    name: Russell 2000,       asset: index, country: US, providers: {}, enabled: false }
+  - { canonical: TOPIX,  name: TOPIX,              asset: index, country: JP, providers: {}, enabled: false }
+  - { canonical: CSI300, name: CSI 300,            asset: index, country: CN, providers: {}, enabled: false }
+  - { canonical: SHCOMP, name: Shanghai Composite, asset: index, country: CN, providers: {}, enabled: false }
+  - { canonical: HSI,    name: Hang Seng,          asset: index, country: HK, providers: {}, enabled: false }
+  - { canonical: HSTECH, name: Hang Seng TECH,     asset: index, country: HK, providers: {}, enabled: false }
+
+  # ---- 個別株 (無料の規約準拠 OHLCV ソースが現状無し → broker API 差し替え前提) ----
+  - { canonical: NVDA,  name: NVIDIA,    asset: equity, country: US, providers: {}, enabled: false }
+  - { canonical: AMD,   name: AMD,       asset: equity, country: US, providers: {}, enabled: false }
+  - { canonical: AVGO,  name: Broadcom,  asset: equity, country: US, providers: {}, enabled: false }
+  - { canonical: MSFT,  name: Microsoft, asset: equity, country: US, providers: {}, enabled: false }
+  - { canonical: GOOGL, name: Alphabet,  asset: equity, country: US, providers: {}, enabled: false }
+  - { canonical: META,  name: Meta,      asset: equity, country: US, providers: {}, enabled: false }
+  - { canonical: AMZN,  name: Amazon,    asset: equity, country: US, providers: {}, enabled: false }
+  - { canonical: TSLA,  name: Tesla,     asset: equity, country: US, providers: {}, enabled: false }
+  - { canonical: TSM,   name: TSMC ADR,  asset: equity, country: US, providers: {}, enabled: false }
+  - { canonical: 9984_T, name: SoftBank Group, asset: equity, country: JP, providers: {}, enabled: false }
+  - { canonical: 6857_T, name: Advantest,      asset: equity, country: JP, providers: {}, enabled: false }
+  - { canonical: 8035_T, name: Tokyo Electron, asset: equity, country: JP, providers: {}, enabled: false }
+  - { canonical: 6954_T, name: FANUC,          asset: equity, country: JP, providers: {}, enabled: false }
+  - { canonical: 6861_T, name: Keyence,        asset: equity, country: JP, providers: {}, enabled: false }
+  - { canonical: BABA,    name: Alibaba (ADR), asset: equity, country: CN, providers: {}, enabled: false }
+  - { canonical: BIDU,    name: Baidu (ADR),   asset: equity, country: CN, providers: {}, enabled: false }
+  - { canonical: 0700_HK, name: Tencent,       asset: equity, country: HK, providers: {}, enabled: false }
+  - { canonical: 1810_HK, name: Xiaomi,        asset: equity, country: HK, providers: {}, enabled: false }
+
+  # ---- Macro / Cross Asset ----
+  - { canonical: US2Y,  name: US 2Y Yield,        asset: rate,      country: US,     providers: { fred: DGS2 } }
+  - { canonical: US10Y, name: US 10Y Yield,       asset: rate,      country: US,     providers: { fred: DGS10 } }
+  - { canonical: JP10Y, name: JP 10Y Yield,       asset: rate,      country: JP,     providers: {}, enabled: false }
+  - { canonical: DXY,   name: Broad Dollar Index, asset: index,     country: US,     providers: { fred: DTWEXBGS } }
+  - { canonical: GOLD,  name: Gold (BTC-USD 建て以外要検討), asset: commodity, country: GLOBAL, providers: {}, enabled: false }
+  - { canonical: WTI,   name: WTI Crude,          asset: commodity, country: GLOBAL, providers: { fred: DCOILWTICO } }
+  - { canonical: BTC,   name: Bitcoin,            asset: crypto,    country: GLOBAL, providers: { coinbase: BTC-USD } }
+
+# FRED マクロ系列 (macro_series / macro_values に保存。市場価格とは別枠)
+fred_series:
+  - { id: CPIAUCSL, name: US CPI (All Urban), country: US }
+  - { id: UNRATE,   name: US Unemployment Rate, country: US }
+  - { id: FEDFUNDS, name: Effective Federal Funds Rate, country: US }
+
+providers:
+  frankfurter:
+    kind: free
+    base_url: https://api.frankfurter.dev
+    interval: 1d
+    notes: ECB 参照レート。キー不要・商用可。日次更新 (CET 16:00 頃)。
+  fred:
+    kind: free
+    base_url: https://api.stlouisfed.org
+    interval: 1d
+    requires_key: FRED_API_KEY
+    notes: 120 req/min/key。指数・金利・商品の日次終値。
+  coinbase:
+    kind: free
+    base_url: https://api.exchange.coinbase.com
+    interval: 900          # 15分足
+    notes: public endpoint 3 req/s。BTC-USD candles。
+  stooq:
+    kind: free
+    enabled: false
+    notes: 2026-08 時点で anti-bot JS 検証により自動取得不可。adapter は将来用に温存しない (docs/limitations.md 参照)。

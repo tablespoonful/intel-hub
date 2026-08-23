@@ -1,0 +1,36 @@
+# ルールベーススコアリング設定。score は 0-100 に正規化。
+weights:
+  recency: 0.25
+  source_quality: 0.20
+  relevance: 0.20
+  velocity: 0.15
+  popularity: 0.10
+  novelty: 0.10
+
+recency:
+  half_life_hours: 24     # この時間で recency 成分が半減
+
+popularity:
+  # log スケール正規化: min(1, log10(1+value) / log10(1+saturation))
+  saturation:
+    hn_points: 500
+    stars: 20000
+    hf_downloads: 1000000
+    hf_likes: 2000
+    youtube_views: 500000
+
+velocity:
+  saturation:
+    stars_24h_delta: 300
+    stars_7d_delta: 1500
+
+# AI 評価へ送る閾値 (score >= ai_threshold のみ Workers AI へ)
+ai_threshold: 65
+
+# Event 化する閾値
+event_threshold: 60
+
+# 1回の AI 評価バッチの最大件数 (Workers AI 無料枠保護)
+ai_batch_limit: 20
+
+negative_keyword_penalty: 15

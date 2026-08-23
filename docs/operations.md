@@ -1,0 +1,66 @@
+# 運用手順
+
+## 初回デプロイ
+
+1. **Cloudflare アカウント準備** (無料プランで可)
+   ```powershell
+   cd worker
+   npm install
+   npx wrangler login
+   ```
+2. **D1 データベース作成**
+   ```powershell
+   npx wrangler d1 create intel-hub
+   # 出力された database_id を worker/wrangler.toml の REPLACE_WITH_D1_ID に貼る
+   npx wrangler d1 execute intel-hub --remote --file=../db/schema.sql
+   ```
+3. **ingest 用トークンを設定** (十分長いランダム文字列)
+   ```powershell
+   npx wrangler secret put INGEST_TOKEN
+   ```
+4. **デプロイ**
+   ```powershell
+   npx wrangler deploy
+   # 表示された URL (https://intel-hub.<subdomain>.workers.dev) を控える
+   ```
+5. **GitHub リポジトリ設定** (public 推奨 — free-tier.md 参照)
+   - Settings → Secrets and variables → Actions に登録:
+     - `INTEL_HUB_INGEST_URL` : Worker の URL
+     - `INTEL_HUB_INGEST_TOKEN` : 手順3と同じ値
+     - `FRED_API_KEY` : fred.stlouisfed.org で無料発行
+     - `SEC_EDGAR_USER_AGENT` : `"名前 連絡先メール"` 形式
+     - `YOUTUBE_API_KEY` (任意), `HF_TOKEN` (任意)
+   - push すると test workflow が走り、collect-* は schedule で動き始める
+   - 初回は Actions タブから `collect-fast` 等を手動実行 (workflow_dispatch) して確認
+
+## 日常の確認
+
+- **Dashboard**: Worker URL を開く (NOW / AI / Market / Papers / GitHub)
+- **ヘルスチェック**: `GET /api/health`
+  - `last_runs` : collector ごとの最終実行
+  - `failure_count_24h` : 直近24時間の失敗数
+  - `stale` : 24時間以上成功していない collector → Actions のログを確認
+- **Workers AI の消費**: Cloudflare ダッシュボード → AI → 使用量 (10,000 Neurons/日)
+
+## よくある対応
+
+| 症状 | 対応 |
+|---|---|
+| ある RSS feed が 404 | サイト側の URL 変更。sources.yaml を修正 (直らなければ `enabled: false`) |
+| GitHub collector が rate limit | Actions 内では GITHUB_TOKEN が自動付与されるので通常発生しない。ローカルでは PAT を .env に設定 |
+| ai_status = pending が溜まる | Workers AI 障害 or Neurons 枯渇。cron が翌日以降自動で再試行するので放置でよい |
+| schedule が止まった | 60日 push なしで自動停止。Actions タブから re-enable + 軽微な commit |
+| D1 write 上限が近い | collect 頻度を下げる (workflows の cron を編集) |
+
+## ローカル開発
+
+```powershell
+py -m pip install -e ".[dev]"          # セットアップ
+py -m pytest                            # テスト
+py -m scripts.run_collectors --tier fast --sink sqlite   # ローカル収集 (data/intel.db)
+py -m scripts.rescore                   # config 変更後の再スコア
+cd worker; npx wrangler dev             # Worker をローカル起動 (http://localhost:8787)
+```
+
+ローカル Worker に流し込む場合は `.dev.vars` に `INGEST_TOKEN=...` を書き、
+`.env` の `INTEL_HUB_INGEST_URL=http://localhost:8787` を設定して `--sink worker`。

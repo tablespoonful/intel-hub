@@ -1,0 +1,476 @@
+# =====================================================================
+# intel-hub source definitions
+#
+# method:
+#   rss     : RSS / Atom feed (feedparser)
+#   api     : 公式 API
+#   none    : RSS/API が存在しない。スクレイピングはしない (方針)。
+#             url は「公式発表ページ」の記録のみで、collector は実行しない。
+# quality : 0.0-1.0 source_quality スコア成分
+# tier    : fast / normal / slow (GitHub Actions の実行系統)
+# verified: false の feed は URL 未検証。404 時は collector が stale として記録。
+# =====================================================================
+
+rss:
+  # ---------- US ----------
+  - id: openai-news
+    name: OpenAI News
+    method: rss
+    url: https://openai.com/news/rss.xml
+    country: US
+    language: en
+    category: llm
+    quality: 0.95
+    tier: normal
+  - id: anthropic-news
+    name: Anthropic News
+    method: none            # 公式RSSなし。スクレイピングしない。
+    url: https://www.anthropic.com/news
+    country: US
+    language: en
+    category: llm
+    quality: 0.95
+    tier: normal
+    enabled: false
+  - id: deepmind-blog
+    name: Google DeepMind Blog
+    method: rss
+    url: https://deepmind.google/blog/rss.xml
+    country: US
+    language: en
+    category: llm
+    quality: 0.9
+    tier: normal
+  - id: google-ai-blog
+    name: Google AI Blog
+    method: rss
+    url: https://blog.google/technology/ai/rss/
+    country: US
+    language: en
+    category: llm
+    quality: 0.85
+    tier: normal
+  - id: nvidia-blog
+    name: NVIDIA Blog
+    method: rss
+    url: https://blogs.nvidia.com/feed/
+    country: US
+    language: en
+    category: physical_ai
+    quality: 0.9
+    tier: normal
+  - id: meta-ai-blog
+    name: Meta AI Blog
+    method: none            # RSS 廃止済み (2026-08 検証: 404)。
+    url: https://ai.meta.com/blog/
+    country: US
+    language: en
+    category: llm
+    quality: 0.85
+    tier: normal
+    enabled: false
+  - id: microsoft-research
+    name: Microsoft Research Blog
+    method: rss
+    url: https://www.microsoft.com/en-us/research/feed/
+    country: US
+    language: en
+    category: llm
+    quality: 0.85
+    tier: normal
+  - id: huggingface-blog
+    name: Hugging Face Blog
+    method: rss
+    url: https://huggingface.co/blog/feed.xml
+    country: US
+    language: en
+    category: llm
+    quality: 0.8
+    tier: normal
+
+  # ---------- China ----------
+  - id: qwen-blog
+    name: Alibaba Qwen Blog
+    method: none
+    url: https://qwenlm.github.io/blog/
+    country: CN
+    language: en
+    category: llm
+    quality: 0.9
+    tier: normal
+    enabled: false
+  - id: deepseek-news
+    name: DeepSeek News
+    method: none            # 公式RSSなし。GitHub/HF releases 側で捕捉。
+    url: https://api-docs.deepseek.com/news/
+    country: CN
+    language: en
+    category: llm
+    quality: 0.9
+    tier: normal
+    enabled: false
+  - id: zhipu-news
+    name: Zhipu / GLM
+    method: none
+    url: https://www.zhipuai.cn/news
+    country: CN
+    language: zh
+    category: llm
+    quality: 0.85
+    tier: normal
+    enabled: false
+  - id: moonshot-news
+    name: Moonshot / Kimi
+    method: none
+    url: https://www.moonshot.cn/
+    country: CN
+    language: zh
+    category: llm
+    quality: 0.85
+    tier: normal
+    enabled: false
+  - id: minimax-news
+    name: MiniMax
+    method: none
+    url: https://www.minimaxi.com/news
+    country: CN
+    language: zh
+    category: llm
+    quality: 0.8
+    tier: normal
+    enabled: false
+  - id: baidu-research
+    name: Baidu Research
+    method: none            # /feed/ は HTML を返す (2026-08 検証)。
+    url: http://research.baidu.com/Blog
+    country: CN
+    language: en
+    category: llm
+    quality: 0.8
+    tier: normal
+    enabled: false
+  - id: tencent-ai
+    name: Tencent AI Lab
+    method: none
+    url: https://ai.tencent.com/ailab/en/news
+    country: CN
+    language: en
+    category: llm
+    quality: 0.8
+    tier: normal
+    enabled: false
+  - id: huawei-noah
+    name: Huawei Noah's Ark Lab
+    method: none
+    url: http://www.noahlab.com.hk/
+    country: CN
+    language: en
+    category: llm
+    quality: 0.75
+    tier: normal
+    enabled: false
+
+  # ---------- Physical AI ----------
+  - id: nvidia-robotics
+    name: NVIDIA Robotics (blog category)
+    method: rss
+    url: https://blogs.nvidia.com/blog/category/robotics/feed/
+    country: US
+    language: en
+    category: robotics
+    quality: 0.9
+    tier: normal
+  - id: physical-intelligence
+    name: Physical Intelligence
+    method: none
+    url: https://www.physicalintelligence.company/
+    country: US
+    language: en
+    category: robotics
+    quality: 0.9
+    tier: normal
+    enabled: false
+  - id: figure-news
+    name: Figure
+    method: none
+    url: https://www.figure.ai/news
+    country: US
+    language: en
+    category: robotics
+    quality: 0.85
+    tier: normal
+    enabled: false
+  - id: 1x-blog
+    name: 1X Technologies
+    method: none
+    url: https://www.1x.tech/discover
+    country: US
+    language: en
+    category: robotics
+    quality: 0.85
+    tier: normal
+    enabled: false
+  - id: boston-dynamics
+    name: Boston Dynamics Blog
+    method: rss
+    url: https://bostondynamics.com/feed/
+    country: US
+    language: en
+    category: robotics
+    quality: 0.85
+    tier: normal
+  - id: skild-ai
+    name: Skild AI
+    method: none
+    url: https://www.skild.ai/
+    country: US
+    language: en
+    category: robotics
+    quality: 0.8
+    tier: normal
+    enabled: false
+  - id: unitree
+    name: Unitree
+    method: none
+    url: https://www.unitree.com/news
+    country: CN
+    language: en
+    category: robotics
+    quality: 0.8
+    tier: normal
+    enabled: false
+  - id: agibot
+    name: AgiBot
+    method: none
+    url: https://www.zhiyuan-robot.com/
+    country: CN
+    language: zh
+    category: robotics
+    quality: 0.8
+    tier: normal
+    enabled: false
+  - id: ubtech
+    name: UBTECH
+    method: none
+    url: https://www.ubtrobot.com/
+    country: CN
+    language: en
+    category: robotics
+    quality: 0.75
+    tier: normal
+    enabled: false
+  - id: fourier
+    name: Fourier Intelligence
+    method: none
+    url: https://fourierintelligence.com/
+    country: CN
+    language: en
+    category: robotics
+    quality: 0.75
+    tier: normal
+    enabled: false
+
+  # ---------- Japan ----------
+  - id: sakana-ai
+    name: Sakana AI Blog
+    method: rss
+    url: https://sakana.ai/feed.xml
+    country: JP
+    language: en
+    category: llm
+    quality: 0.9
+    tier: normal
+  - id: preferred-networks
+    name: Preferred Networks Tech Blog
+    method: rss
+    url: https://tech.preferred.jp/ja/blog/feed/
+    country: JP
+    language: ja
+    category: llm
+    quality: 0.85
+    tier: normal
+  - id: ntt-rd
+    name: NTT R&D
+    method: none
+    url: https://group.ntt/jp/newsrelease/
+    country: JP
+    language: ja
+    category: llm
+    quality: 0.8
+    tier: normal
+    enabled: false
+  - id: sony-ai
+    name: Sony AI Blog
+    method: none
+    url: https://ai.sony/blog/
+    country: JP
+    language: en
+    category: llm
+    quality: 0.8
+    tier: normal
+    enabled: false
+  - id: aist-news
+    name: AIST 研究成果
+    method: none            # RSS URL 消滅 (2026-08 検証: 404)。
+    url: https://www.aist.go.jp/aist_j/news/
+    country: JP
+    language: ja
+    category: research
+    quality: 0.8
+    tier: slow
+    enabled: false
+  - id: riken-news
+    name: RIKEN News
+    method: none            # RSS URL 消滅 (2026-08 検証: 404)。
+    url: https://www.riken.jp/pr/news/
+    country: JP
+    language: ja
+    category: research
+    quality: 0.8
+    tier: slow
+    enabled: false
+  - id: tri-news
+    name: Toyota Research Institute
+    method: none
+    url: https://www.tri.global/news
+    country: JP
+    language: en
+    category: robotics
+    quality: 0.85
+    tier: normal
+    enabled: false
+  - id: mujin
+    name: Mujin
+    method: none
+    url: https://www.mujin.co.jp/news/
+    country: JP
+    language: ja
+    category: robotics
+    quality: 0.75
+    tier: normal
+    enabled: false
+
+# ---------------------------------------------------------------------
+# GitHub 監視リポジトリ (github collector / tier: normal)
+# ---------------------------------------------------------------------
+github:
+  repos:
+    - openai/openai-python
+    - anthropics/claude-code
+    - anthropics/anthropic-sdk-python
+    - deepseek-ai/DeepSeek-V3
+    - QwenLM/Qwen3
+    - huggingface/transformers
+    - huggingface/lerobot
+    - vllm-project/vllm
+    - ggml-org/llama.cpp
+    - langchain-ai/langchain
+    - microsoft/autogen
+    - modelcontextprotocol/servers
+    - NVIDIA/Isaac-GR00T
+    - isaac-sim/IsaacLab
+    - google-deepmind/mujoco
+    - Genesis-Embodied-AI/Genesis
+    - Physical-Intelligence/openpi
+    - unitreerobotics/unitree_rl_gym
+    - SakanaAI/AI-Scientist
+    - pfnet/pfrl
+
+# ---------------------------------------------------------------------
+# Hugging Face (huggingface collector / tier: normal)
+# ---------------------------------------------------------------------
+huggingface:
+  search_keywords:
+    - llm
+    - agent
+    - reasoning
+    - vlm
+    - vla
+    - robotics
+    - embodied
+    - world model
+    - physical ai
+    - humanoid
+  limit_per_keyword: 30
+
+# ---------------------------------------------------------------------
+# arXiv (papers collector / tier: slow)
+# ---------------------------------------------------------------------
+arxiv:
+  categories:
+    - cs.AI
+    - cs.CL
+    - cs.LG
+    - cs.RO
+    - cs.CV
+  max_results: 200
+
+# ---------------------------------------------------------------------
+# Hacker News (tier: fast)
+# ---------------------------------------------------------------------
+hackernews:
+  lists: [topstories, newstories]
+  max_items_per_list: 60
+  min_points_top: 20
+
+# ---------------------------------------------------------------------
+# YouTube (tier: slow) — 既知チャンネルは uploads playlist で quota 節約
+# channel_id は UC... 形式。search は使わない (1日100回の独立枠のため)。
+# ---------------------------------------------------------------------
+youtube:
+  channels:
+    - id: UCXZCJLdBC09xxGZ6gcdrc6A   # OpenAI
+      name: OpenAI
+      country: US
+    - id: UCP7jMXSY2xbc3KCAE0MHQ-A   # Google DeepMind
+      name: Google DeepMind
+      country: US
+    - id: UCHhYXsLBEVVnbvsq57n1MTQ   # Anthropic
+      name: Anthropic
+      country: US
+    - id: UCsBjURrPoezykLs9EqgamOA   # Fireship (AI/tech news)
+      name: Fireship
+      country: US
+    - id: UCbfYPyITQ-7l4upoX8nvctg   # Two Minute Papers
+      name: Two Minute Papers
+      country: US
+  max_videos_per_channel: 10
+
+# ---------------------------------------------------------------------
+# Macro (tier: fast の macro_rss / slow の sec_edgar)
+# ---------------------------------------------------------------------
+macro:
+  boj:
+    # 日本銀行 公式 RSS (What's New)。2026-08 検証済み。
+    # 補足: 2026-02 に時系列統計の公式 API (stat-search.boj.or.jp/api/v1) が公開済み。
+    #       時系列データが必要になったら collector 追加を検討 (docs/limitations.md)。
+    - id: boj-whatsnew
+      name: Bank of Japan What's New
+      method: rss
+      url: https://www.boj.or.jp/en/rss/whatsnew.xml
+      country: JP
+      language: en
+      category: central_bank
+      quality: 0.95
+  fed:
+    - id: fed-press
+      name: Federal Reserve Press Releases
+      method: rss
+      url: https://www.federalreserve.gov/feeds/press_all.xml
+      country: US
+      language: en
+      category: central_bank
+      quality: 0.95
+  sec_edgar:
+    # CIK は 10 桁ゼロ埋め。監視銘柄の 8-K / 10-Q / 10-K を取得。
+    companies:
+      - { cik: "0001045810", ticker: NVDA,  name: NVIDIA }
+      - { cik: "0000002488", ticker: AMD,   name: AMD }
+      - { cik: "0001730168", ticker: AVGO,  name: Broadcom }
+      - { cik: "0000789019", ticker: MSFT,  name: Microsoft }
+      - { cik: "0001652044", ticker: GOOGL, name: Alphabet }
+      - { cik: "0001326801", ticker: META,  name: Meta }
+      - { cik: "0001018724", ticker: AMZN,  name: Amazon }
+      - { cik: "0001318605", ticker: TSLA,  name: Tesla }
+      - { cik: "0001046179", ticker: TSM,   name: TSMC ADR }
+    forms: ["8-K", "10-Q", "10-K"]

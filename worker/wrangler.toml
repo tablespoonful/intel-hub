@@ -1,0 +1,19 @@
+# intel-hub Cloudflare Worker
+name = "intel-hub"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+
+# Secret (set with: wrangler secret put INGEST_TOKEN):
+#   INGEST_TOKEN - bearer token required by POST /api/ingest
+
+[[d1_databases]]
+binding = "DB"
+database_name = "intel-hub"
+database_id = "27f1f7fe-6478-4a06-b853-a927af74d954"
+
+[ai]
+binding = "AI"
+
+# AI evaluation runs twice a day (01:13 / 13:13 UTC)
+[triggers]
+crons = ["13 1,13 * * *"]

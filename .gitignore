@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+.env
+.dev.vars
+data/
+*.db
+*.sqlite3
+.pytest_cache/
+node_modules/
+worker/dist/
+.wrangler/
+.DS_Store
+*.egg-info/

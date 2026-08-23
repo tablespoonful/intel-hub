@@ -1,0 +1,29 @@
+# normal 系統: 公式ブログ RSS / GitHub / Hugging Face (2時間間隔)
+name: collect-normal
+on:
+  schedule:
+    - cron: "23 */2 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: collect-normal
+  cancel-in-progress: true
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -e .
+      - name: Run normal collectors
+        env:
+          INTEL_HUB_INGEST_URL: ${{ secrets.INTEL_HUB_INGEST_URL }}
+          INTEL_HUB_INGEST_TOKEN: ${{ secrets.INTEL_HUB_INGEST_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python -m scripts.run_collectors --tier normal --sink worker

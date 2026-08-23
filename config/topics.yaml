@@ -1,0 +1,188 @@
+# トピック定義。keyword_relevance スコアとカテゴリ推定に使用。
+# weight: そのトピックにマッチしたときの相対的な重要度 (0-1)
+topics:
+  llm:
+    weight: 1.0
+    keywords:
+      - llm
+      - large language model
+      - language model
+      - gpt
+      - claude
+      - gemini
+      - qwen
+      - deepseek
+      - llama
+      - kimi
+      - mistral
+      - transformer
+      - fine-tuning
+      - pretraining
+      - instruction tuning
+  multimodal:
+    weight: 0.9
+    keywords:
+      - multimodal
+      - vision language
+      - vlm
+      - text-to-image
+      - text-to-video
+      - image generation
+      - video generation
+      - speech recognition
+      - text-to-speech
+  reasoning:
+    weight: 1.0
+    keywords:
+      - reasoning
+      - chain of thought
+      - chain-of-thought
+      - test-time compute
+      - inference scaling
+      - o1
+      - r1
+  agent:
+    weight: 1.0
+    keywords:
+      - ai agent
+      - agentic
+      - autonomous agent
+      - coding agent
+      - tool use
+      - function calling
+      - mcp
+      - model context protocol
+      - computer use
+      - browser use
+  robotics:
+    weight: 1.0
+    keywords:
+      - robot
+      - robotics
+      - humanoid
+      - manipulation
+      - locomotion
+      - vla
+      - vision-language-action
+      - physical ai
+      - embodied
+      - embodied ai
+      - robot learning
+      - world model
+      - large behavior model
+      - diffusion policy
+      - sim2real
+      - sim-to-real
+      - teleoperation
+      - dexterous
+      - grasping
+  rl:
+    weight: 0.8
+    keywords:
+      - reinforcement learning
+      - imitation learning
+      - rlhf
+      - reward model
+      - policy gradient
+      - offline rl
+  markets:
+    weight: 0.7
+    keywords:
+      - earnings
+      - guidance
+      - revenue
+      - ipo
+      - acquisition
+      - funding round
+      - valuation
+      - datacenter
+      - data center
+      - semiconductor
+      - gpu
+      - tpu
+      - chip
+      - foundry
+      - export control
+  macro:
+    weight: 0.7
+    keywords:
+      - fomc
+      - federal reserve
+      - rate hike
+      - rate cut
+      - interest rate
+      - inflation
+      - cpi
+      - boj
+      - bank of japan
+      - yield curve
+      - pboc
+      - stimulus
+      - tariff
+
+# タイトル/本文にこれらが含まれる場合はノイズとして減点
+negative_keywords:
+  - hiring
+  - webinar
+  - sponsored
+  - advertisement
+  - giveaway
+
+# event_type 推定用のキーワードヒント (Event 抽出で使用)
+event_type_hints:
+  model_release:
+    - release
+    - releases
+    - released
+    - introducing
+    - announcing
+    - launch
+    - unveil
+    - open-source
+    - open source
+    - weights
+  funding:
+    - funding
+    - raises
+    - raised
+    - series a
+    - series b
+    - series c
+    - investment
+    - valuation
+  research:
+    - paper
+    - research
+    - study
+    - benchmark
+    - state-of-the-art
+    - sota
+  policy:
+    - regulation
+    - policy
+    - export control
+    - ban
+    - law
+    - executive order
+  earnings:
+    - earnings
+    - quarterly results
+    - q1
+    - q2
+    - q3
+    - q4
+    - fiscal
+    - guidance
+  central_bank:
+    - fomc
+    - rate decision
+    - monetary policy
+    - boj
+    - federal reserve
+    - pboc
+  robotics_release:
+    - humanoid
+    - robot
+    - gr00t
+    - figure 0
+    - optimus

@@ -1,0 +1,138 @@
+# エンティティ統一辞書。
+# aliases はタイトル/本文マッチ用 (小文字比較)。tickers は markets.yaml の canonical symbol。
+entities:
+  - id: nvidia
+    name: NVIDIA
+    country: US
+    aliases: [nvidia, nvda, jensen huang, gr00t, isaac lab, cuda]
+    tickers: [NVDA, SOX, NDX]
+  - id: amd
+    name: AMD
+    country: US
+    aliases: [amd, advanced micro devices, instinct mi3, ryzen]
+    tickers: [AMD, SOX]
+  - id: broadcom
+    name: Broadcom
+    country: US
+    aliases: [broadcom, avgo]
+    tickers: [AVGO, SOX]
+  - id: microsoft
+    name: Microsoft
+    country: US
+    aliases: [microsoft, msft, azure, copilot]
+    tickers: [MSFT, NDX]
+  - id: openai
+    name: OpenAI
+    country: US
+    aliases: [openai, chatgpt, gpt-5, gpt-4, sora, sam altman]
+    tickers: [MSFT, NDX]        # 非上場: 関連銘柄で代理
+  - id: anthropic
+    name: Anthropic
+    country: US
+    aliases: [anthropic, claude, dario amodei]
+    tickers: [GOOGL, AMZN]      # 非上場: 出資元で代理
+  - id: alphabet
+    name: Alphabet / Google
+    country: US
+    aliases: [google, alphabet, deepmind, gemini, googl, waymo]
+    tickers: [GOOGL, NDX]
+  - id: meta
+    name: Meta
+    country: US
+    aliases: [meta, facebook, llama, fair, zuckerberg]
+    tickers: [META, NDX]
+  - id: amazon
+    name: Amazon
+    country: US
+    aliases: [amazon, aws, amzn]
+    tickers: [AMZN, NDX]
+  - id: tesla
+    name: Tesla
+    country: US
+    aliases: [tesla, tsla, optimus, elon musk, fsd]
+    tickers: [TSLA, NDX]
+  - id: tsmc
+    name: TSMC
+    country: TW
+    aliases: [tsmc, taiwan semiconductor]
+    tickers: [TSM, SOX]
+  - id: softbank
+    name: SoftBank Group
+    country: JP
+    aliases: [softbank, son masayoshi, arm holdings, ソフトバンク]
+    tickers: [9984_T, N225]
+  - id: advantest
+    name: Advantest
+    country: JP
+    aliases: [advantest, アドバンテスト]
+    tickers: [6857_T, N225]
+  - id: tokyo-electron
+    name: Tokyo Electron
+    country: JP
+    aliases: [tokyo electron, 東京エレクトロン]
+    tickers: [8035_T, N225]
+  - id: fanuc
+    name: FANUC
+    country: JP
+    aliases: [fanuc, ファナック]
+    tickers: [6954_T, N225]
+  - id: keyence
+    name: Keyence
+    country: JP
+    aliases: [keyence, キーエンス]
+    tickers: [6861_T, N225]
+  - id: alibaba
+    name: Alibaba
+    country: CN
+    aliases: [alibaba, qwen, baba, tongyi, aliyun]
+    tickers: [BABA, HSTECH]
+  - id: baidu
+    name: Baidu
+    country: CN
+    aliases: [baidu, ernie, wenxin]
+    tickers: [BIDU, HSTECH]
+  - id: tencent
+    name: Tencent
+    country: CN
+    aliases: [tencent, hunyuan, weixin, wechat]
+    tickers: [0700_HK, HSTECH]
+  - id: xiaomi
+    name: Xiaomi
+    country: CN
+    aliases: [xiaomi, mi robot]
+    tickers: [1810_HK, HSTECH]
+  - id: deepseek
+    name: DeepSeek
+    country: CN
+    aliases: [deepseek, deepseek-v3, deepseek-r1]
+    tickers: [HSTECH, CSI300]   # 非上場: 中国テック指数で代理
+  - id: figure
+    name: Figure
+    country: US
+    aliases: [figure ai, figure 02, figure 03]
+    tickers: []
+  - id: boston-dynamics
+    name: Boston Dynamics
+    country: US
+    aliases: [boston dynamics, atlas robot, spot robot]
+    tickers: []
+  - id: unitree
+    name: Unitree
+    country: CN
+    aliases: [unitree, g1 humanoid, go2]
+    tickers: []
+  - id: physical-intelligence
+    name: Physical Intelligence
+    country: US
+    aliases: [physical intelligence, openpi, pi-0, π0]
+    tickers: []
+  - id: sakana
+    name: Sakana AI
+    country: JP
+    aliases: [sakana ai, ai scientist]
+    tickers: []
+  - id: pfn
+    name: Preferred Networks
+    country: JP
+    aliases: [preferred networks, pfn]
+    tickers: []
