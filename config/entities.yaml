@@ -131,6 +131,25 @@ entities:
     country: JP
     aliases: [sakana ai, ai scientist]
     tickers: []
+
+  # ---- 中央銀行・政策当局 ----
+  # 企業ではないが、発表が直接価格に効くため entity として扱い
+  # イベント -> ticker の紐付けを可能にする。
+  - id: federal-reserve
+    name: Federal Reserve
+    country: US
+    aliases: [federal reserve, fomc, fed chair, powell, board of governors]
+    tickers: [US2Y, US10Y, DXY, SPX]
+  - id: bank-of-japan
+    name: Bank of Japan
+    country: JP
+    aliases: [bank of japan, boj, 日本銀行, ueda, monetary policy meeting]
+    tickers: [USDJPY, N225]
+  - id: sec
+    name: U.S. Securities and Exchange Commission
+    country: US
+    aliases: [securities and exchange commission, sec filing, edgar]
+    tickers: []
   - id: pfn
     name: Preferred Networks
     country: JP

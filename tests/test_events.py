@@ -37,6 +37,15 @@ def test_build_events_threshold():
     assert events == []
 
 
+def test_items_without_entity_do_not_become_events():
+    """エンティティ不明の記事はイベント化しない (ticker へ辿れないため)。
+
+    これを許すと記事がほぼ 1:1 でイベント化し、実測で 840 件まで膨らんだ。
+    """
+    noise = make("Some unrelated blog post about gardening", score=95)
+    assert build_events([noise], ENTITIES, HINTS, threshold=60) == []
+
+
 def test_build_events_merges_same_entity_same_day():
     a = make("NVIDIA releases new robot model", score=85)
     b = make("NVIDIA introducing GR00T v2 today", score=70)

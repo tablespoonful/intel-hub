@@ -55,10 +55,16 @@ def build_events(
         if item.score < threshold:
             continue
         matched = match_entities(f"{item.title} {item.summary}", entities_cfg)
+        # エンティティが特定できない記事はイベント化しない。
+        # Event の存在意義は Entity -> Ticker -> 市場価格へ辿れることにあり
+        # (docs/architecture.md)、紐付け先が無いものは記事のままで十分。
+        # ここを緩めると記事がほぼ 1:1 でイベント化してノイズになる。
+        if not matched:
+            continue
         event_type = classify_event_type(item, hints)
         occurred = item.published_at or item.fetched_at
         day = (occurred or "")[:10]
-        primary = matched[0] if matched else item.source_id
+        primary = matched[0]
         key = (event_type, primary, day)
 
         if key in events:
