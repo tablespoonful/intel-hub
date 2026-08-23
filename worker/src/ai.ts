@@ -163,20 +163,27 @@ async function evaluateOne(env: Env, row: PendingRow): Promise<{ evaluation: AiE
 }
 
 export async function runAiEvaluation(env: Env): Promise<void> {
-  const pending = await env.DB
-    .prepare(
-      `SELECT kind, id, title, body, score FROM (
-         SELECT 'article' AS kind, id, title, summary AS body, score FROM articles WHERE ai_status = 'pending'
-         UNION ALL
-         SELECT 'paper' AS kind, id, title, abstract AS body, score FROM papers WHERE ai_status = 'pending'
-       )
-       ORDER BY score DESC
-       LIMIT ?`
-    )
-    .bind(MAX_ITEMS_PER_RUN)
-    .all<PendingRow>();
+  // Scores are only comparable within a kind: articles top out near 69 while
+  // papers sit at 68-78, so a single ORDER BY score across both would hand
+  // every slot to papers and never summarise a news article. Give each kind
+  // its own share and let the batch shrink if one side has nothing pending.
+  const perKind = Math.max(1, Math.floor(MAX_ITEMS_PER_RUN / 2));
+  const [articles, papers] = await env.DB.batch<PendingRow>([
+    env.DB
+      .prepare(
+        `SELECT 'article' AS kind, id, title, summary AS body, score FROM articles
+         WHERE ai_status = 'pending' ORDER BY score DESC LIMIT ?`
+      )
+      .bind(perKind),
+    env.DB
+      .prepare(
+        `SELECT 'paper' AS kind, id, title, abstract AS body, score FROM papers
+         WHERE ai_status = 'pending' ORDER BY score DESC LIMIT ?`
+      )
+      .bind(perKind),
+  ]);
 
-  const rows = pending.results;
+  const rows = [...(articles?.results ?? []), ...(papers?.results ?? [])];
   if (rows.length === 0) return;
 
   let done = 0;
