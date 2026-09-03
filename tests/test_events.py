@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from collectors.base import RawItem
 from pipeline.events import build_events, classify_event_type, match_entities
@@ -56,3 +56,28 @@ def test_build_events_merges_same_entity_same_day():
     assert ev["importance"] == 85
     assert "nvidia" in ev["entities"]
     assert ev["event_type"] == "model_release"
+
+
+def make_at(title, when, score=80.0):
+    item = normalize_item(RawItem(
+        source_id="s", external_id=title[:24], kind="article", title=title,
+        published_at=when, country="US"))
+    item.score = score
+    return item
+
+
+def test_build_events_skips_items_older_than_max_age():
+    """古いアイテムはイベント化しない。
+
+    Event は毎回バッチだけから組み立て直されるため、古いイベントを作り直すと
+    source_count と topics がバッチ構成で揺れ、D1 の書き込み枠を消費し続ける。
+    """
+    now = datetime.now(timezone.utc)
+    fresh = make_at("NVIDIA release today", now - timedelta(hours=1))
+    stale = make_at("NVIDIA release long ago", now - timedelta(days=10))
+
+    events = build_events([fresh, stale], ENTITIES, HINTS, threshold=60, max_age_days=3)
+    assert [e["title"] for e in events] == ["NVIDIA release today"]
+
+    # max_age_days を渡さなければ従来どおり全件対象 (rescore など再構築用途)。
+    assert len(build_events([fresh, stale], ENTITIES, HINTS, threshold=60)) == 2

@@ -53,6 +53,18 @@ function sumChanges(results: D1Result[]): number {
 
 const ARTICLE_KINDS = new Set(["article", "hn", "filing"]);
 
+// D1 の無料枠は 1 日 100,000 rows written で、書き込みがインデックス列に触れると
+// インデックス分の行が追加で計上される (developers.cloudflare.com/d1/platform/pricing/)。
+// collector は毎回フィードのウィンドウ全体を再送するため 1 日約 23,000 件が届くが、
+// 実際に新規なのは 500 件程度でしかない。無条件の DO UPDATE は残り全部を毎時間
+// 書き直しており、articles だけで 1 日約 70,000 行 (上限の 70%) を消費していた。
+// そのため以下の upsert はすべて WHERE を持ち、内容が変わっていない行は 0 書き込みで済ませる。
+//
+// スコアは recency で減衰するので毎回値が変わり、そのままでは WHERE を素通りしてしまう。
+// 減衰したスコアの反映はこのウィンドウ内の項目に限る。これを過ぎると recency 成分は
+// 十分小さく、スコアを凍結してもダッシュボードの並び順は実質変わらない。
+const SCORE_REFRESH_WINDOW = "-3 days";
+
 function articleStmt(db: D1Database, it: IngestItem): D1PreparedStatement {
   const title = it.title ?? "";
   return db
@@ -83,7 +95,16 @@ function articleStmt(db: D1Database, it: IngestItem): D1PreparedStatement {
          ai_status = CASE
            WHEN articles.ai_status IN ('done', 'failed') THEN articles.ai_status
            ELSE excluded.ai_status
-         END`
+         END
+       WHERE articles.title IS NOT excluded.title
+          OR articles.summary IS NOT excluded.summary
+          OR articles.url IS NOT excluded.url
+          OR articles.canonical_url IS NOT excluded.canonical_url
+          OR articles.published_at IS NOT excluded.published_at
+          OR articles.topics IS NOT excluded.topics
+          OR (articles.score IS NOT excluded.score
+              AND COALESCE(articles.published_at, articles.fetched_at)
+                  > datetime('now', '${SCORE_REFRESH_WINDOW}'))`
     )
     .bind(
       it.source_id,
@@ -131,7 +152,17 @@ function paperStmt(db: D1Database, it: IngestItem): D1PreparedStatement {
          ai_status = CASE
            WHEN papers.ai_status IN ('done', 'failed') THEN papers.ai_status
            ELSE excluded.ai_status
-         END`
+         END
+       WHERE papers.title IS NOT excluded.title
+          OR papers.abstract IS NOT excluded.abstract
+          OR papers.url IS NOT excluded.url
+          OR papers.authors IS NOT excluded.authors
+          OR papers.categories IS NOT excluded.categories
+          OR papers.updated_at IS NOT excluded.updated_at
+          OR papers.topics IS NOT excluded.topics
+          OR (papers.score IS NOT excluded.score
+              AND COALESCE(papers.published_at, papers.fetched_at)
+                  > datetime('now', '${SCORE_REFRESH_WINDOW}'))`
     )
     .bind(
       it.source_id,
@@ -173,7 +204,15 @@ function repoStmts(db: D1Database, it: IngestItem): { repo: D1PreparedStatement;
          open_issues = excluded.open_issues,
          pushed_at = excluded.pushed_at,
          fetched_at = excluded.fetched_at,
-         score = excluded.score`
+         score = excluded.score
+       WHERE repositories.stars IS NOT excluded.stars
+          OR repositories.forks IS NOT excluded.forks
+          OR repositories.open_issues IS NOT excluded.open_issues
+          OR repositories.description IS NOT excluded.description
+          OR repositories.latest_release IS NOT excluded.latest_release
+          OR repositories.pushed_at IS NOT excluded.pushed_at
+          OR repositories.topics IS NOT excluded.topics
+          OR repositories.score IS NOT excluded.score`
     )
     .bind(
       it.external_id,
@@ -219,7 +258,16 @@ function modelStmt(db: D1Database, it: IngestItem): D1PreparedStatement {
          hf_created_at = excluded.hf_created_at,
          hf_updated_at = excluded.hf_updated_at,
          fetched_at = excluded.fetched_at,
-         score = excluded.score`
+         score = excluded.score
+       WHERE models.downloads IS NOT excluded.downloads
+          OR models.likes IS NOT excluded.likes
+          OR models.hf_updated_at IS NOT excluded.hf_updated_at
+          OR models.pipeline_tag IS NOT excluded.pipeline_tag
+          OR models.tags IS NOT excluded.tags
+          OR models.url IS NOT excluded.url
+          OR (models.score IS NOT excluded.score
+              AND COALESCE(models.hf_updated_at, models.fetched_at)
+                  > datetime('now', '${SCORE_REFRESH_WINDOW}'))`
     )
     .bind(
       it.external_id,
@@ -253,7 +301,15 @@ function videoStmt(db: D1Database, it: IngestItem): D1PreparedStatement {
          published_at = excluded.published_at,
          fetched_at = excluded.fetched_at,
          country = excluded.country,
-         score = excluded.score`
+         score = excluded.score
+       WHERE videos.title IS NOT excluded.title
+          OR videos.description IS NOT excluded.description
+          OR videos.channel_name IS NOT excluded.channel_name
+          OR videos.url IS NOT excluded.url
+          OR videos.published_at IS NOT excluded.published_at
+          OR (videos.score IS NOT excluded.score
+              AND COALESCE(videos.published_at, videos.fetched_at)
+                  > datetime('now', '${SCORE_REFRESH_WINDOW}'))`
     )
     .bind(
       it.external_id,
@@ -329,7 +385,16 @@ export async function handleIngest(request: Request, env: Env): Promise<Response
                quality = excluded.quality,
                tier = excluded.tier,
                enabled = excluded.enabled,
-               updated_at = datetime('now')`
+               updated_at = datetime('now')
+             WHERE sources.name IS NOT excluded.name
+                OR sources.method IS NOT excluded.method
+                OR sources.url IS NOT excluded.url
+                OR sources.country IS NOT excluded.country
+                OR sources.language IS NOT excluded.language
+                OR sources.category IS NOT excluded.category
+                OR sources.quality IS NOT excluded.quality
+                OR sources.tier IS NOT excluded.tier
+                OR sources.enabled IS NOT excluded.enabled`
           )
           .bind(
             s.id,
@@ -436,7 +501,10 @@ export async function handleIngest(request: Request, env: Env): Promise<Response
     if (videoStmts.length > 0) inserted["videos"] = sumChanges(await runBatch(db, videoStmts));
 
     // -- 4. events + event_entities --
+    // events と event_entities は別バッチにする。前者の書き込み数を独立して数えたいのと、
+    // event_entities が events の id を引くので先に events を確定させる必要があるため。
     const eventStmts: D1PreparedStatement[] = [];
+    const entityStmts: D1PreparedStatement[] = [];
     for (const ev of events) {
       if (!ev || typeof ev.event_type !== "string" || typeof ev.title !== "string" || typeof ev.occurred_at !== "string") {
         continue;
@@ -449,9 +517,14 @@ export async function handleIngest(request: Request, env: Env): Promise<Response
              ON CONFLICT (event_type, title, occurred_at) DO UPDATE SET
                summary = excluded.summary,
                country = excluded.country,
-               importance = excluded.importance,
+               importance = MAX(events.importance, excluded.importance),
                topics = excluded.topics,
-               source_count = excluded.source_count`
+               source_count = MAX(events.source_count, excluded.source_count)
+             WHERE events.summary IS NOT excluded.summary
+                OR events.country IS NOT excluded.country
+                OR events.topics IS NOT excluded.topics
+                OR excluded.source_count > events.source_count
+                OR excluded.importance > events.importance`
           )
           .bind(
             ev.event_type,
@@ -466,7 +539,7 @@ export async function handleIngest(request: Request, env: Env): Promise<Response
       );
       for (const entity of ev.entities ?? []) {
         if (typeof entity !== "string" || entity === "") continue;
-        eventStmts.push(
+        entityStmts.push(
           db
             .prepare(
               `INSERT OR IGNORE INTO event_entities (event_id, entity_id, role)
@@ -477,17 +550,11 @@ export async function handleIngest(request: Request, env: Env): Promise<Response
         );
       }
     }
-    if (eventStmts.length > 0) {
-      // count only the event upserts (statements against the events table)
-      let eventCount = 0;
-      for (const ev of events) {
-        if (ev && typeof ev.event_type === "string" && typeof ev.title === "string" && typeof ev.occurred_at === "string") {
-          eventCount += 1;
-        }
-      }
-      await runBatch(db, eventStmts);
-      inserted["events"] = eventCount;
-    }
+    // 他テーブルと同じく「実際に書かれた行数」を返す。送信した文の数ではない。
+    // ここを文の数にしていたため、変更のないイベントを毎回書き直していた事実が
+    // ingest のレスポンスから見えなくなっていた。
+    if (eventStmts.length > 0) inserted["events"] = sumChanges(await runBatch(db, eventStmts));
+    if (entityStmts.length > 0) await runBatch(db, entityStmts);
 
     // -- 5. market symbols (placeholders, FK) + market_prices --
     const marketStmts: D1PreparedStatement[] = [];
@@ -518,7 +585,12 @@ export async function handleIngest(request: Request, env: Env): Promise<Response
                high = excluded.high,
                low = excluded.low,
                close = excluded.close,
-               volume = excluded.volume`
+               volume = excluded.volume
+             WHERE market_prices.close IS NOT excluded.close
+                OR market_prices.open IS NOT excluded.open
+                OR market_prices.high IS NOT excluded.high
+                OR market_prices.low IS NOT excluded.low
+                OR market_prices.volume IS NOT excluded.volume`
           )
           .bind(
             mp.symbol,
@@ -549,7 +621,11 @@ export async function handleIngest(request: Request, env: Env): Promise<Response
              ON CONFLICT (id) DO UPDATE SET
                name = CASE WHEN excluded.name IS NOT NULL AND excluded.name != '' THEN excluded.name ELSE macro_series.name END,
                source = excluded.source,
-               country = excluded.country`
+               country = excluded.country
+             WHERE (excluded.name IS NOT NULL AND excluded.name != ''
+                    AND macro_series.name IS NOT excluded.name)
+                OR macro_series.source IS NOT excluded.source
+                OR macro_series.country IS NOT excluded.country`
           )
           .bind(mv.series_id, mv.name ?? null, mv.source ?? "fred", mv.country ?? null)
       );
@@ -564,7 +640,8 @@ export async function handleIngest(request: Request, env: Env): Promise<Response
              VALUES (?1, ?2, ?3, datetime('now'))
              ON CONFLICT (series_id, date) DO UPDATE SET
                value = excluded.value,
-               fetched_at = excluded.fetched_at`
+               fetched_at = excluded.fetched_at
+             WHERE macro_values.value IS NOT excluded.value`
           )
           .bind(mv.series_id, mv.date, mv.value ?? null)
       );

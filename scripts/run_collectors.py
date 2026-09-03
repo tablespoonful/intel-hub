@@ -191,7 +191,8 @@ def main(argv: list[str] | None = None) -> int:
     events = build_events(
         scored, cfg.entities(),
         cfg.topics().get("event_type_hints", {}),
-        threshold=float(scoring_cfg.get("event_threshold", 60)))
+        threshold=float(scoring_cfg.get("event_threshold", 60)),
+        max_age_days=float(scoring_cfg.get("event_max_age_days", 3)))
 
     sink = make_sink(args.sink, args.db)
     counts = sink.write(catalog_sources(), scored, all_candles, all_macro, events, all_stats)

@@ -36,6 +36,11 @@ ai_threshold: 65
 # Event 化する閾値
 event_threshold: 60
 
+# この日数より古い発生日時のアイテムはイベント化しない。
+# 古いイベントは既に DB にあり、作り直すと source_count と topics がバッチ構成で揺れて
+# D1 の書き込み枠を無駄に消費する (pipeline/events/builder.py)。
+event_max_age_days: 3
+
 # 1回の AI 評価バッチの最大件数 (Workers AI 無料枠保護)
 ai_batch_limit: 20
 

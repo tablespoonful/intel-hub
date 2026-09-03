@@ -9,8 +9,10 @@ AI による高度なイベント統合は Phase 3 (Workers AI) で上書き可�
 """
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 
+from collectors.base import utcnow
 from pipeline.normalize.normalizer import NormalizedItem
 
 DEFAULT_EVENT_TYPE_BY_KIND = {
@@ -49,10 +51,27 @@ def build_events(
     entities_cfg: list[dict[str, Any]],
     hints: dict[str, list[str]],
     threshold: float = 60.0,
+    max_age_days: float | None = None,
 ) -> list[dict[str, Any]]:
+    """max_age_days より古い発生日時のアイテムはイベント化しない。
+
+    Event は毎回バッチの内容だけから組み立て直されるため、source_count と topics は
+    そのバッチに何が入っていたかで揺れる。RSS は取得のたびにウィンドウ全体を再送し、
+    その中身は毎回少しずつ変わるので、この揺れが古いイベントまで毎時間書き換えてしまい
+    D1 の 1 日 100,000 rows written を圧迫していた。
+    直近のアイテムはどの取得でもフィードに残っているためバッチ構成が安定し、
+    再構築しても同じ内容になる。古いイベントは既に DB にあるので作り直す必要がない。
+    """
+    cutoff = None
+    if max_age_days is not None:
+        cutoff = (utcnow() - timedelta(days=max_age_days)).isoformat()
+
     events: dict[tuple[str, str, str], dict[str, Any]] = {}
     for item in items:
         if item.score < threshold:
+            continue
+        occurred = item.published_at or item.fetched_at
+        if cutoff is not None and (occurred or "") < cutoff:
             continue
         matched = match_entities(f"{item.title} {item.summary}", entities_cfg)
         # エンティティが特定できない記事はイベント化しない。
@@ -62,7 +81,6 @@ def build_events(
         if not matched:
             continue
         event_type = classify_event_type(item, hints)
-        occurred = item.published_at or item.fetched_at
         day = (occurred or "")[:10]
         primary = matched[0]
         key = (event_type, primary, day)
