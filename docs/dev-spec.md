@@ -172,6 +172,7 @@ Worker 側 upsert 規則:
 - `/api/health` → `{ok, last_runs:[collector別最新], failure_count_24h, stale_sources:[24h以上成功なしのcollector]}`
 - `POST /api/ingest` → 上記 §3 (Bearer 認証必須。不一致は 401)
 - `/` → Dashboard HTML (§5)
+- `/manifest.webmanifest`, `/sw.js`, `/icon.svg`, `/icon-192.png`, `/icon-512.png`, `/apple-touch-icon.png` → PWA 資産 (§5, `worker/src/pwa.ts`)
 
 limit 既定 50, 最大 200。パラメータは全て optional。SQL は必ず bind パラメータ。
 
@@ -200,6 +201,19 @@ NOW (events top20: score/time/country/category/title/source_count) /
 AI (articles, フィルタ: country US,CN,JP × topic llm,agent,robotics 等) /
 Market (主要シンボル最新値の表) / Papers / GitHub (delta 順)。
 fetch は同一オリジンの /api/*。ダーク基調のシンプルな CSS をインライン。
+
+### PWA
+
+Dashboard はインストール可能な PWA (Windows/Mac は Edge・Chrome の「アプリとしてインストール」、
+iOS は Safari の「ホーム画面に追加」)。資産はすべて Worker が同一オリジンで返す (Static Assets 不使用)。
+
+- Service Worker (`/sw.js`) は同一オリジン GET をすべて **network-first** で処理し、成功応答を
+  キャッシュする。キャッシュはオフライン時のフォールバック専用で、オンライン時は常に最新を表示する。
+- キャッシュから返した応答には `X-Intel-Hub-Offline: 1` を付け、Dashboard は「cached data」と表示する。
+  キャッシュも無い場合は 503 `{ok:false,error:"offline"}` (同ヘッダ付き) を返す。
+- キャッシュ名 `intel-hub-v<N>` を上げると、次回 activate 時に旧キャッシュを全削除する。
+- アイコンは `py -m scripts.gen_pwa_icons` で `worker/src/assets/` に生成 (コミット済み、デザイン変更時のみ)。
+- プッシュ通知は未実装 (購読情報の保存先がスキーマに無いため。追加する場合は `db/schema.sql` から設計する)。
 
 ## 6. スキーマ
 

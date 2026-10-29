@@ -6,6 +6,17 @@ compatibility_date = "2026-08-01"
 # Secret (set with: wrangler secret put INGEST_TOKEN):
 #   INGEST_TOKEN - bearer token required by POST /api/ingest
 
+# PWA icons in src/assets/ (bundled into the Worker, no static assets binding)
+[[rules]]
+type = "Data"
+globs = ["**/*.png"]
+fallthrough = true
+
+[[rules]]
+type = "Text"
+globs = ["**/*.svg"]
+fallthrough = true
+
 [[d1_databases]]
 binding = "DB"
 database_name = "intel-hub"

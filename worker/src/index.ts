@@ -7,6 +7,7 @@ import { handleApi, json } from "./api";
 import { handleIngest } from "./ingest";
 import { runAiEvaluation } from "./ai";
 import { DASHBOARD_HTML } from "./dashboard";
+import { handlePwa } from "./pwa";
 
 const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -30,6 +31,9 @@ export default {
         headers: { "Content-Type": "text/html; charset=utf-8" },
       });
     }
+
+    const pwa = request.method === "GET" ? handlePwa(path) : null;
+    if (pwa) return pwa;
 
     if (path === "/api/ingest") {
       if (request.method !== "POST") return json({ ok: false, error: "method not allowed" }, 405);
