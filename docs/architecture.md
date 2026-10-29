@@ -18,7 +18,8 @@
 │  Worker (TypeScript)                                        │
 │  ├ /api/ingest   : upsert (D1)                              │
 │  ├ /api/*        : 参照 API (events/technology/markets/...) │
-│  ├ /             : Dashboard (自己完結 HTML)                │
+│  ├ /             : Dashboard (自己完結 HTML, PWA)           │
+│  ├ /sw.js 等     : PWA 資産 (manifest, Service Worker, icon)│
 │  └ scheduled cron: Workers AI 評価 (1日2回, 上位20件のみ)   │
 │                    │                                        │
 │                    ▼                                        │

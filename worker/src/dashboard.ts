@@ -9,6 +9,12 @@ export const DASHBOARD_HTML: string = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>intel-hub</title>
+<meta name="theme-color" content="#161b22">
+<meta name="apple-mobile-web-app-title" content="intel-hub">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <style>
   :root {
     --bg: #0d1117; --panel: #161b22; --border: #30363d;
@@ -135,14 +141,18 @@ export const DASHBOARD_HTML: string = `<!doctype html>
   }
   function fetchJson(path, statusId, cb) {
     setStatus(statusId, "loading...");
+    var offline = false;
     fetch(path)
       .then(function (r) {
-        if (!r.ok) throw new Error("HTTP " + r.status);
+        // set by the service worker when the network is unreachable
+        offline = r.headers.get("X-Intel-Hub-Offline") === "1";
+        if (!r.ok) throw new Error(offline ? "offline (no cached data)" : "HTTP " + r.status);
         return r.json();
       })
       .then(function (data) {
         setStatus(statusId, "");
         cb(data);
+        if (offline) setStatus(statusId, "offline: showing cached data");
       })
       .catch(function (err) {
         setStatus(statusId, "error: " + err.message);
@@ -283,6 +293,12 @@ export const DASHBOARD_HTML: string = `<!doctype html>
   bindFilter("ai-topic", "topic");
 
   showTab("now");
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js").catch(function (err) {
+      console.warn("service worker registration failed:", err);
+    });
+  }
 })();
 </script>
 </body>
