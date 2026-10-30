@@ -46,6 +46,7 @@ export const DASHBOARD_HTML: string = `<!doctype html>
   tr:last-child td { border-bottom: none; }
   a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
+  .orig { color: var(--muted); font-size: 12px; margin-top: 1px; }
   .score { display: inline-block; min-width: 34px; text-align: center; border-radius: 4px; padding: 0 6px; background: #1f6feb33; color: var(--accent); font-weight: 600; }
   .muted { color: var(--muted); }
   .pos { color: var(--good); }
@@ -133,10 +134,12 @@ ${OVERVIEW_HTML}
     var n = Math.round(Number(v) || 0);
     return '<span class="score">' + n + "</span>";
   }
-  function linkCell(url, title) {
-    var t = esc(title || "（タイトルなし）");
-    if (!url) return t;
-    return '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' + t + "</a>";
+  function linkCell(url, title, titleJa) {
+    var ja = titleJa && titleJa !== title ? titleJa : "";
+    var t = esc(ja || title || "（タイトルなし）");
+    var head = url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' + t + "</a>" : t;
+    // the Japanese title leads; the original stays visible underneath
+    return ja ? head + '<div class="orig">' + esc(title) + "</div>" : head;
   }
   function setStatus(id, msg) {
     var el = document.getElementById(id);
@@ -198,7 +201,7 @@ ${OVERVIEW_HTML}
           '</td><td class="muted">' + esc(fmtTime(e.occurred_at)) +
           "</td><td>" + esc(e.country || "") +
           '</td><td class="muted">' + esc(eventLabel(e.event_type)) +
-          '</td><td class="wrap">' + esc(e.title || "") +
+          '</td><td class="wrap">' + linkCell("", e.title, e.title_ja) +
           "</td><td>" + esc(e.source_count) + "</td></tr>";
       });
       renderTable("now-table", ["スコア", "日時", "国", "種別", "タイトル", "ソース数"], rows, "now-status");
@@ -212,7 +215,7 @@ ${OVERVIEW_HTML}
     fetchJson(q, "ai-status", function (data) {
       var rows = (data.items || []).map(function (a) {
         return "<tr><td>" + scoreCell(a.score) +
-          '</td><td class="wrap">' + linkCell(a.url, a.title) +
+          '</td><td class="wrap">' + linkCell(a.url, a.title, a.title_ja) +
           '</td><td class="muted">' + esc(a.source_id || "") +
           "</td><td>" + esc(a.country || "") +
           '</td><td class="muted">' + esc(a.category || "") +
@@ -247,7 +250,7 @@ ${OVERVIEW_HTML}
     fetchJson("/api/papers?limit=50", "papers-status", function (data) {
       var rows = (data.items || []).map(function (p) {
         return "<tr><td>" + scoreCell(p.score) +
-          '</td><td class="wrap">' + linkCell(p.url, p.title) +
+          '</td><td class="wrap">' + linkCell(p.url, p.title, p.title_ja) +
           '</td><td class="muted">' + esc(p.arxiv_id || "") +
           '</td><td class="muted">' + esc(fmtTime(p.published_at)) + "</td></tr>";
       });

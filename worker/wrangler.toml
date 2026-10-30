@@ -25,6 +25,6 @@ database_id = "27f1f7fe-6478-4a06-b853-a927af74d954"
 [ai]
 binding = "AI"
 
-# AI evaluation runs twice a day (01:13 / 13:13 UTC)
+# AI evaluation runs twice a day (01:13 / 13:13 UTC); title translation hourly at :37
 [triggers]
-crons = ["13 1,13 * * *"]
+crons = ["13 1,13 * * *", "37 * * * *"]

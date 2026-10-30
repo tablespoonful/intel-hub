@@ -241,6 +241,19 @@ CREATE TABLE IF NOT EXISTS ai_scores (
   UNIQUE (target_kind, target_id)
 );
 
+-- タイトルの日本語訳。Worker の毎時 cron が Workers AI で埋める。原文は各テーブルが正で、
+-- source_title が原文と変わったら訳し直す。
+CREATE TABLE IF NOT EXISTS title_translations (
+  target_kind   TEXT NOT NULL,              -- event | article | paper
+  target_id     INTEGER NOT NULL,
+  lang          TEXT NOT NULL DEFAULT 'ja',
+  source_title  TEXT NOT NULL,              -- 訳したときの原文
+  title         TEXT NOT NULL,
+  model         TEXT,                       -- 翻訳モデル。元から日本語なら 'source'
+  created_at    TEXT DEFAULT (datetime('now')),
+  PRIMARY KEY (target_kind, target_id, lang)
+);
+
 CREATE TABLE IF NOT EXISTS digests (
   id            INTEGER PRIMARY KEY AUTOINCREMENT,
   digest_date   TEXT NOT NULL,

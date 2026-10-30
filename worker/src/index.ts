@@ -6,6 +6,7 @@ import type { Env } from "./types";
 import { handleApi, json } from "./api";
 import { handleIngest } from "./ingest";
 import { runAiEvaluation } from "./ai";
+import { runTitleTranslation } from "./translate";
 import { DASHBOARD_HTML } from "./dashboard";
 import { handlePwa } from "./pwa";
 
@@ -53,7 +54,11 @@ export default {
     return json({ ok: false, error: "not found" }, 404);
   },
 
-  async scheduled(_controller, env, ctx): Promise<void> {
-    ctx.waitUntil(runAiEvaluation(env));
+  async scheduled(controller, env, ctx): Promise<void> {
+    if (controller.cron === "37 * * * *") {
+      ctx.waitUntil(runTitleTranslation(env));
+    } else {
+      ctx.waitUntil(runAiEvaluation(env));
+    }
   },
 } satisfies ExportedHandler<Env>;

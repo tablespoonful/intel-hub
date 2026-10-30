@@ -421,7 +421,9 @@ export const OVERVIEW_JS = `
       var li = h("li");
       li.appendChild(h("span", "score", Math.round(Number(e.importance) || 0)));
       var body = h("div");
-      body.appendChild(h("div", "etitle", e.title || ""));
+      var ja = e.title_ja && e.title_ja !== e.title ? e.title_ja : "";
+      body.appendChild(h("div", "etitle", ja || e.title || ""));
+      if (ja) body.appendChild(h("div", "orig", e.title));
       body.appendChild(h("div", "emeta", [eventLabel(e.event_type), e.country, fmtTime(e.occurred_at), "ソース " + (e.source_count || 1)].filter(Boolean).join(" · ")));
       li.appendChild(body);
       ul.appendChild(li);
