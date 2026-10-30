@@ -203,6 +203,16 @@ async function listModels(env: Env, params: URLSearchParams): Promise<Response> 
 }
 
 async function health(env: Env): Promise<Response> {
+  return json({ ok: true, ...(await healthData(env)) });
+}
+
+interface HealthData {
+  last_runs: Record<string, unknown>[];
+  failure_count_24h: number;
+  stale_sources: string[];
+}
+
+async function healthData(env: Env): Promise<HealthData> {
   const [lastRuns, failures, stale] = await env.DB.batch([
     env.DB.prepare(
       `SELECT * FROM collector_runs
@@ -222,11 +232,116 @@ async function health(env: Env): Promise<Response> {
   ]);
   const failureRow = (failures?.results ?? [])[0] as { c?: number } | undefined;
   const staleRows = (stale?.results ?? []) as { collector?: string }[];
-  return json({
-    ok: true,
-    last_runs: lastRuns?.results ?? [],
+  return {
+    last_runs: (lastRuns?.results ?? []) as Record<string, unknown>[],
     failure_count_24h: failureRow && typeof failureRow.c === "number" ? failureRow.c : 0,
     stale_sources: staleRows.map((r) => r.collector).filter((c): c is string => typeof c === "string"),
+  };
+}
+
+/** ISO8601 UTC string `days` ago, in the same `YYYY-MM-DDTHH:MM:SSZ` form the sinks write. */
+function isoDaysAgo(days: number): string {
+  return new Date(Date.now() - days * 86_400_000).toISOString().replace(/\.\d{3}Z$/, "Z");
+}
+
+const OVERVIEW_DAYS = 14;
+const SPARK_POINTS = 30;
+
+/** Aggregates for the dashboard overview tab (dev-spec section 4), in one round trip. */
+async function overview(env: Env): Promise<Response> {
+  const since1d = isoDaysAgo(1);
+  const since7d = isoDaysAgo(7);
+  const sinceSeries = isoDaysAgo(OVERVIEW_DAYS - 1).slice(0, 10);
+  const sinceMarket = isoDaysAgo(SPARK_POINTS * 2).slice(0, 10);
+
+  const [counts, byDay, topics, eventTypes, topEvents, prices, repos] = await env.DB.batch([
+    env.DB.prepare(
+      `SELECT
+         (SELECT COUNT(*) FROM events WHERE occurred_at >= ?1) AS events_24h,
+         (SELECT COUNT(*) FROM events WHERE occurred_at >= ?2) AS events_7d,
+         (SELECT COUNT(*) FROM articles WHERE dedupe_of IS NULL AND published_at >= ?1) AS articles_24h,
+         (SELECT COUNT(*) FROM articles WHERE dedupe_of IS NULL AND published_at >= ?2) AS articles_7d,
+         (SELECT COUNT(*) FROM papers WHERE published_at >= ?2) AS papers_7d`
+    ).bind(since1d, since7d),
+    env.DB.prepare(
+      `SELECT substr(published_at, 1, 10) AS day,
+         CASE WHEN country IN ('US', 'CN', 'JP') THEN country ELSE 'Other' END AS country,
+         COUNT(*) AS n
+       FROM articles
+       WHERE dedupe_of IS NULL AND published_at >= ?
+       GROUP BY day, 2
+       ORDER BY day`
+    ).bind(sinceSeries),
+    env.DB.prepare(
+      `SELECT j.value AS topic, COUNT(*) AS n
+       FROM articles a, json_each(a.topics) j
+       WHERE a.dedupe_of IS NULL AND a.published_at >= ? AND json_valid(a.topics)
+       GROUP BY j.value
+       ORDER BY n DESC, topic
+       LIMIT 10`
+    ).bind(since7d),
+    env.DB.prepare(
+      `SELECT event_type, COUNT(*) AS n FROM events
+       WHERE occurred_at >= ?
+       GROUP BY event_type
+       ORDER BY n DESC, event_type
+       LIMIT 10`
+    ).bind(since7d),
+    env.DB.prepare(
+      `SELECT id, event_type, title, occurred_at, country, importance, source_count FROM events
+       WHERE occurred_at >= ?
+       ORDER BY importance DESC, occurred_at DESC
+       LIMIT 5`
+    ).bind(since7d),
+    env.DB.prepare(
+      `SELECT r.symbol, s.name, s.asset, r.ts, r.close FROM (
+         SELECT symbol, ts, close,
+           ROW_NUMBER() OVER (PARTITION BY symbol ORDER BY ts DESC) AS rn
+         FROM market_prices
+         WHERE interval = '1d' AND close IS NOT NULL AND ts >= ?
+       ) r
+       LEFT JOIN market_symbols s ON s.canonical = r.symbol
+       WHERE r.rn <= ?
+       ORDER BY r.symbol, r.ts`
+    ).bind(sinceMarket, SPARK_POINTS),
+    env.DB.prepare(
+      `SELECT full_name, url, stars, delta FROM (
+         SELECT r.full_name, r.url, r.stars,
+           r.stars - (
+             SELECT s.stars FROM repo_snapshots s
+             WHERE s.full_name = r.full_name AND s.snapped_at <= ?
+             ORDER BY s.snapped_at DESC LIMIT 1
+           ) AS delta
+         FROM repositories r
+       )
+       WHERE delta > 0
+       ORDER BY delta DESC
+       LIMIT 8`
+    ).bind(since7d),
+  ]);
+
+  type PriceRow = { symbol: string; name: string | null; asset: string | null; ts: string; close: number };
+  const markets: { symbol: string; name: string; asset: string; points: [string, number][] }[] = [];
+  for (const row of (prices?.results ?? []) as PriceRow[]) {
+    let m = markets[markets.length - 1];
+    if (!m || m.symbol !== row.symbol) {
+      m = { symbol: row.symbol, name: row.name ?? row.symbol, asset: row.asset ?? "", points: [] };
+      markets.push(m);
+    }
+    m.points.push([row.ts.slice(0, 10), row.close]);
+  }
+
+  return json({
+    generated_at: isoDaysAgo(0),
+    days: OVERVIEW_DAYS,
+    counts: (counts?.results ?? [])[0] ?? {},
+    articles_by_day: byDay?.results ?? [],
+    topics_7d: topics?.results ?? [],
+    event_types_7d: eventTypes?.results ?? [],
+    top_events: topEvents?.results ?? [],
+    markets,
+    repo_movers_7d: repos?.results ?? [],
+    health: await healthData(env),
   });
 }
 
@@ -250,6 +365,7 @@ export async function handleApi(url: URL, env: Env): Promise<Response> {
   if (path === "/api/repos") return listRepos(env, params);
   if (path === "/api/models") return listModels(env, params);
   if (path === "/api/health") return health(env);
+  if (path === "/api/overview") return overview(env);
 
   return json({ ok: false, error: "not found" }, 404);
 }

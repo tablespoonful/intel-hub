@@ -3,6 +3,8 @@
  * Vanilla JS only, same-origin fetch to /api/*, no external resources.
  */
 
+import { OVERVIEW_CSS, OVERVIEW_HTML, OVERVIEW_JS } from "./overview";
+
 export const DASHBOARD_HTML: string = `<!doctype html>
 <html lang="ja">
 <head>
@@ -50,13 +52,14 @@ export const DASHBOARD_HTML: string = `<!doctype html>
   .neg { color: var(--bad); }
   .status { padding: 10px; color: var(--muted); }
   h2.subhead { font-size: 13px; color: var(--muted); margin: 14px 0 6px; }
-</style>
+${OVERVIEW_CSS}</style>
 </head>
 <body>
 <header>
   <h1>intel-hub</h1>
   <nav id="tabs">
-    <button class="tabbtn active" data-tab="now">NOW</button>
+    <button class="tabbtn active" data-tab="overview">Overview</button>
+    <button class="tabbtn" data-tab="now">NOW</button>
     <button class="tabbtn" data-tab="ai">AI</button>
     <button class="tabbtn" data-tab="market">Market</button>
     <button class="tabbtn" data-tab="papers">Papers</button>
@@ -64,7 +67,8 @@ export const DASHBOARD_HTML: string = `<!doctype html>
   </nav>
 </header>
 <main>
-  <section class="tab active" id="tab-now">
+${OVERVIEW_HTML}
+  <section class="tab" id="tab-now">
     <div class="tablewrap"><div class="status" id="now-status">loading...</div><table id="now-table"></table></div>
   </section>
 
@@ -103,6 +107,7 @@ export const DASHBOARD_HTML: string = `<!doctype html>
     <div class="tablewrap"><div class="status" id="github-status">loading...</div><table id="github-table"></table></div>
   </section>
 </main>
+<div id="tip" role="tooltip"></div>
 <script>
 (function () {
   "use strict";
@@ -256,7 +261,8 @@ export const DASHBOARD_HTML: string = `<!doctype html>
     });
   }
 
-  var loaders = { now: loadNow, ai: loadAi, market: loadMarket, papers: loadPapers, github: loadGithub };
+${OVERVIEW_JS}
+  var loaders = { overview: loadOverview, now: loadNow, ai: loadAi, market: loadMarket, papers: loadPapers, github: loadGithub };
 
   function showTab(name) {
     var btns = document.querySelectorAll("#tabs .tabbtn");
@@ -270,6 +276,8 @@ export const DASHBOARD_HTML: string = `<!doctype html>
     if (!loaded[name]) {
       loaded[name] = true;
       loaders[name]();
+    } else if (name === "overview") {
+      renderOverview(); // charts measured their width while visible; re-fit after other tabs
     }
   }
 
@@ -292,7 +300,7 @@ export const DASHBOARD_HTML: string = `<!doctype html>
   bindFilter("ai-country", "country");
   bindFilter("ai-topic", "topic");
 
-  showTab("now");
+  showTab("overview");
 
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("/sw.js").catch(function (err) {
