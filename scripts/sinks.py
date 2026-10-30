@@ -151,14 +151,12 @@ class SQLiteSink:
         return counts
 
     def _ensure_market_symbols(self) -> None:
-        from pipeline import config as cfg
-        for s in cfg.markets().get("symbols", []):
+        for s in market_symbol_rows():
             self.conn.execute(
                 """INSERT INTO market_symbols (canonical,name,asset,country,providers)
                    VALUES (?,?,?,?,?)
                    ON CONFLICT(canonical) DO UPDATE SET providers=excluded.providers""",
-                (s["canonical"], s.get("name", s["canonical"]), s.get("asset", "index"),
-                 s.get("country", ""), json.dumps(s.get("providers", {}))))
+                (s["canonical"], s["name"], s["asset"], s["country"], json.dumps(s["providers"])))
 
     def _write_typed(self, it: NormalizedItem, raw_item_id: int | None, counts: dict) -> None:
         c = self.conn
@@ -240,6 +238,17 @@ class SQLiteSink:
             counts["videos"] += 1
 
 
+def market_symbol_rows() -> list[dict[str, Any]]:
+    """markets.yaml の symbols を market_symbols テーブルの行 (dev-spec §3 market_symbols[]) にする。"""
+    from pipeline import config as cfg
+    return [
+        {"canonical": s["canonical"], "name": s.get("name", s["canonical"]),
+         "asset": s.get("asset", "index"), "country": s.get("country", ""),
+         "providers": s.get("providers", {})}
+        for s in cfg.markets().get("symbols", [])
+    ]
+
+
 class WorkerSink:
     def __init__(self, base_url: str, token: str) -> None:
         self.url = base_url.rstrip("/") + "/api/ingest"
@@ -249,6 +258,7 @@ class WorkerSink:
         payload = {
             "sources": sources,
             "items": [self._item(i) for i in items],
+            "market_symbols": market_symbol_rows() if candles else [],
             "market_prices": [asdict(cd) for cd in candles],
             "macro_values": [asdict(mv) for mv in macro_values],
             "events": events,

@@ -344,6 +344,7 @@ export async function handleIngest(request: Request, env: Env): Promise<Response
   const db = env.DB;
   const sources = payload.sources ?? [];
   const items = payload.items ?? [];
+  const marketSymbols = payload.market_symbols ?? [];
   const marketPrices = payload.market_prices ?? [];
   const macroValues = payload.macro_values ?? [];
   const events = payload.events ?? [];
@@ -358,6 +359,7 @@ export async function handleIngest(request: Request, env: Env): Promise<Response
     models: 0,
     videos: 0,
     events: 0,
+    market_symbols: 0,
     market_prices: 0,
     macro_values: 0,
     collector_runs: 0,
@@ -556,7 +558,30 @@ export async function handleIngest(request: Request, env: Env): Promise<Response
     if (eventStmts.length > 0) inserted["events"] = sumChanges(await runBatch(db, eventStmts));
     if (entityStmts.length > 0) await runBatch(db, entityStmts);
 
-    // -- 5. market symbols (placeholders, FK) + market_prices --
+    // -- 5. market symbols (definitions, then placeholders for the FK) + market_prices --
+    const symbolStmts: D1PreparedStatement[] = [];
+    for (const ms of marketSymbols) {
+      if (!ms || typeof ms.canonical !== "string" || ms.canonical === "") continue;
+      symbolStmts.push(
+        db
+          .prepare(
+            `INSERT INTO market_symbols (canonical, name, asset, country, providers)
+             VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT (canonical) DO UPDATE SET
+               name = excluded.name,
+               asset = excluded.asset,
+               country = excluded.country,
+               providers = excluded.providers
+             WHERE market_symbols.name IS NOT excluded.name
+                OR market_symbols.asset IS NOT excluded.asset
+                OR market_symbols.country IS NOT excluded.country
+                OR market_symbols.providers IS NOT excluded.providers`
+          )
+          .bind(ms.canonical, ms.name ?? ms.canonical, ms.asset ?? "unknown", ms.country ?? null, j(ms.providers))
+      );
+    }
+    if (symbolStmts.length > 0) inserted["market_symbols"] = sumChanges(await runBatch(db, symbolStmts));
+
     const marketStmts: D1PreparedStatement[] = [];
     const seenSymbols = new Set<string>();
     for (const mp of marketPrices) {

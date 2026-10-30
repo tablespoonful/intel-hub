@@ -30,3 +30,33 @@ def test_normalized_item_matches_ingest_contract():
     }
     assert required <= set(d.keys())
     json.dumps(d)  # JSON 直列化可能であること
+
+
+def test_worker_sink_sends_market_symbols_with_prices(monkeypatch):
+    """dev-spec §3: market_prices を送る回は markets.yaml の銘柄定義も market_symbols[] で送る。"""
+    from collectors.markets.providers import Candle
+    from scripts import sinks
+
+    sent = []
+
+    class _Resp:
+        def raise_for_status(self):
+            pass
+
+        def json(self):
+            return {"ok": True, "inserted": {}, "duplicates": 0}
+
+    monkeypatch.setattr(sinks.httpx, "post", lambda url, json, **kw: sent.append(json) or _Resp())
+    sink = sinks.WorkerSink("https://example.invalid", "token")
+
+    candle = Candle(symbol="US10Y", ts="2026-10-29T00:00:00Z", interval="1d",
+                    open=4.1, high=4.1, low=4.1, close=4.1, volume=None, provider="fred")
+    sink.write([], [], [candle], [], [], [])
+    sink.write([], [], [], [], [], [])
+
+    symbols = {s["canonical"]: s for s in sent[0]["market_symbols"]}
+    assert symbols["US10Y"]["asset"] == "rate"
+    assert symbols["SPX"]["name"] == "S&P 500"
+    assert set(symbols["USDJPY"]) == {"canonical", "name", "asset", "country", "providers"}
+    assert sent[1]["market_symbols"] == []  # 価格の無い回は送らない
+    json.dumps(sent[0])
