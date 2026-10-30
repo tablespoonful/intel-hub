@@ -24,7 +24,7 @@ export const DASHBOARD_HTML: string = `<!doctype html>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--fg); font: 14px/1.5 -apple-system, "Segoe UI", "Hiragino Sans", "Noto Sans JP", sans-serif; }
   header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--border); background: var(--panel); position: sticky; top: 0; }
-  header h1 { font-size: 16px; color: var(--accent); }
+  header h1 { font-size: 16px; color: var(--accent); white-space: nowrap; flex-shrink: 0; }
   nav { display: flex; gap: 4px; flex-wrap: wrap; }
   button.tabbtn, button.fbtn {
     background: transparent; color: var(--muted); border: 1px solid var(--border);
