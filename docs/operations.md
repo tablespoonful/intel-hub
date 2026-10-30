@@ -33,6 +33,19 @@
    - push すると test workflow が走り、collect-* は schedule で動き始める
    - 初回は Actions タブから `collect-fast` 等を手動実行 (workflow_dispatch) して確認
 
+## 継続デプロイ (GitHub Actions)
+
+初回デプロイ後は `.github/workflows/deploy.yml` が Worker を更新するので、手元の PC は不要。
+
+- `main` に `worker/**`・`db/schema.sql`・`deploy.yml` の変更が入ると自動実行。Actions タブから手動実行 (workflow_dispatch) も可
+- 手順: 型チェック → `db/schema.sql` を D1 に適用 (`IF NOT EXISTS` のみなので冪等) → `wrangler deploy`
+- `INGEST_TOKEN` など Worker の secret は `wrangler deploy` で消えない (再設定不要)
+- 必要な GitHub Secrets:
+  - `CLOUDFLARE_API_TOKEN` : dash.cloudflare.com → My Profile → API Tokens → 「Edit Cloudflare Workers」テンプレートに
+    **Account / D1 / Edit** の権限を追加して作成
+  - `CLOUDFLARE_ACCOUNT_ID` : Workers & Pages の画面に表示されるアカウント ID
+- Worker の URL はジョブログの `Deploy Worker` ステップ末尾に出る
+
 ## 日常の確認
 
 - **Dashboard**: Worker URL を開く (NOW / AI / Market / Papers / GitHub)
