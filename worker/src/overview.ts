@@ -72,7 +72,7 @@ export const OVERVIEW_HTML = `
     <div class="ov-kpis" id="ov-kpis"></div>
     <div class="ov-grid">
       <div class="card span2" id="card-volume">
-        <div class="card-head"><h2>記事数の推移<span class="sub">直近14日・国別</span></h2><button class="tblbtn" type="button">表</button></div>
+        <div class="card-head"><h2>記事数の推移<span class="sub">直近14日・情報源別</span></h2><button class="tblbtn" type="button">表</button></div>
         <div class="viz"></div><div class="tbl"></div>
       </div>
       <div class="card" id="card-topics">
@@ -102,11 +102,12 @@ export const OVERVIEW_HTML = `
 export const OVERVIEW_JS = `
   // ---------------- overview tab ----------------
   var SVGNS = "http://www.w3.org/2000/svg";
-  var COUNTRY_SERIES = [
-    { key: "US", label: "US", color: "var(--s1)" },
-    { key: "CN", label: "CN", color: "var(--s2)" },
-    { key: "JP", label: "JP", color: "var(--s3)" },
-    { key: "Other", label: "Other", color: "var(--s4)" }
+  // most articles carry no country (Hacker News dominates), so the stack splits by source type
+  var SOURCE_SERIES = [
+    { key: "official", label: "企業・研究ブログ", color: "var(--s1)" },
+    { key: "hn", label: "Hacker News", color: "var(--s2)" },
+    { key: "central_bank", label: "中央銀行", color: "var(--s3)" },
+    { key: "filing", label: "SEC 開示", color: "var(--s4)" }
   ];
   var overviewData = null;
   var tip = document.getElementById("tip");
@@ -220,8 +221,9 @@ export const OVERVIEW_JS = `
     st.appendChild(icon);
     st.appendChild(h("span", "", ok ? "正常" : "要確認"));
     t.appendChild(st);
+    // a stale collector may still be running with partial failures, so name it rather than call it stopped
     var notes = [];
-    if (stale) notes.push("停止中 " + stale + " 件");
+    if (stale) notes.push("24時間成功なし: " + hl.stale_sources.join(", "));
     if (failed) notes.push("24時間の失敗 " + failed + " 件");
     t.appendChild(h("div", "note", notes.length ? notes.join(" / ") : "全コレクター稼働中"));
     box.appendChild(t);
@@ -234,16 +236,16 @@ export const OVERVIEW_JS = `
     return out;
   }
 
-  // stacked columns: articles per day, split by country
+  // stacked columns: articles per day, split by source type
   function renderVolume(d) {
     var p = cardParts("card-volume");
     var days = dayList(d.generated_at, d.days || 14);
     var byDay = {};
-    days.forEach(function (day) { byDay[day] = { US: 0, CN: 0, JP: 0, Other: 0, total: 0 }; });
+    days.forEach(function (day) { byDay[day] = { official: 0, hn: 0, central_bank: 0, filing: 0, total: 0 }; });
     (d.articles_by_day || []).forEach(function (r) {
       var b = byDay[r.day];
       if (!b) return;
-      b[r.country] = (b[r.country] || 0) + r.n;
+      b[r.source_group] = (b[r.source_group] || 0) + r.n;
       b.total += r.n;
     });
     var max = 0;
@@ -251,7 +253,7 @@ export const OVERVIEW_JS = `
     if (max === 0) { p.viz.appendChild(h("div", "empty", "この期間の記事はまだありません")); return; }
 
     var legend = h("div", "legend");
-    COUNTRY_SERIES.forEach(function (sr) {
+    SOURCE_SERIES.forEach(function (sr) {
       var item = h("span");
       var key = h("span", "key"); key.style.background = sr.color;
       item.appendChild(key); item.appendChild(document.createTextNode(sr.label));
@@ -263,7 +265,7 @@ export const OVERVIEW_JS = `
     var H = top + plotH + axisH, plotW = W - left - right;
     var step = niceStep(max / 4), yMax = Math.ceil(max / step) * step;
     var svg = s("svg", { "class": "chart", width: W, height: H, viewBox: "0 0 " + W + " " + H, role: "img",
-      "aria-label": "直近" + days.length + "日の国別記事数" });
+      "aria-label": "直近" + days.length + "日の情報源別記事数" });
     for (var v = 0; v <= yMax + 1e-9; v += step) {
       var gy = top + plotH - (v / yMax) * plotH;
       svg.appendChild(s("line", { x1: left, x2: W - right, y1: gy, y2: gy, stroke: v === 0 ? "var(--axis)" : "var(--grid)", "stroke-width": 1 }));
@@ -273,7 +275,7 @@ export const OVERVIEW_JS = `
     var labelEvery = Math.ceil(40 / band);
     days.forEach(function (day, i) {
       var b = byDay[day], x = left + i * band + (band - colW) / 2, base = top + plotH;
-      var segs = COUNTRY_SERIES.filter(function (sr) { return b[sr.key] > 0; });
+      var segs = SOURCE_SERIES.filter(function (sr) { return b[sr.key] > 0; });
       segs.forEach(function (sr, j) {
         var hgt = (b[sr.key] / yMax) * plotH, isTop = j === segs.length - 1;
         var y0 = base - hgt, y1 = base - (j === 0 ? 0 : 2);
@@ -297,16 +299,16 @@ export const OVERVIEW_JS = `
       }
       var hit = s("rect", { "class": "hit", x: left + i * band, y: top, width: band, height: plotH, "aria-label": day + " 合計 " + b.total });
       bindTip(hit, function () {
-        return [day + "（合計 " + compact(b.total) + "）", COUNTRY_SERIES.map(function (sr) {
+        return [day + "（合計 " + compact(b.total) + "）", SOURCE_SERIES.map(function (sr) {
           return { value: compact(b[sr.key]), label: sr.label, color: sr.color };
         })];
       });
       svg.appendChild(hit);
     });
     p.viz.appendChild(svg);
-    p.tbl.appendChild(table(["日付", "US", "CN", "JP", "Other", "合計"], days.map(function (day) {
+    p.tbl.appendChild(table(["日付"].concat(SOURCE_SERIES.map(function (sr) { return sr.label; }), ["合計"]), days.map(function (day) {
       var b = byDay[day];
-      return [day, b.US, b.CN, b.JP, b.Other, b.total];
+      return [day].concat(SOURCE_SERIES.map(function (sr) { return b[sr.key]; }), [b.total]);
     })));
   }
 

@@ -265,7 +265,12 @@ async function overview(env: Env): Promise<Response> {
     ).bind(since1d, since7d),
     env.DB.prepare(
       `SELECT substr(published_at, 1, 10) AS day,
-         CASE WHEN country IN ('US', 'CN', 'JP') THEN country ELSE 'Other' END AS country,
+         CASE
+           WHEN source_id = 'hackernews' THEN 'hn'
+           WHEN source_id = 'sec-edgar' THEN 'filing'
+           WHEN category = 'central_bank' THEN 'central_bank'
+           ELSE 'official'
+         END AS source_group,
          COUNT(*) AS n
        FROM articles
        WHERE dedupe_of IS NULL AND published_at >= ?

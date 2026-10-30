@@ -172,7 +172,7 @@ Worker 側 upsert 規則:
 - `/api/health` → `{ok, last_runs:[collector別最新], failure_count_24h, stale_sources:[24h以上成功なしのcollector]}`
 - `/api/overview` → Dashboard の Overview タブ用の集計を 1 回で返す (パラメータなし):
   `{generated_at, days, counts:{events_24h, events_7d, articles_24h, articles_7d, papers_7d},
-  articles_by_day:[{day, country(US|CN|JP|Other), n}] (直近 days=14 日), topics_7d:[{topic, n}] (上位10),
+  articles_by_day:[{day, source_group(official|hn|central_bank|filing), n}] (直近 days=14 日。hn=hackernews, filing=sec-edgar, central_bank=category が central_bank, それ以外 official), topics_7d:[{topic, n}] (上位10),
   event_types_7d:[{event_type, n}] (上位10), top_events:[event 上位5], markets:[{symbol, name, asset, points:[[date, close]]}]
   (interval=1d の直近30本), repo_movers_7d:[{full_name, url, stars, delta}] (7日のスター増 上位8), health:{/api/health と同じ項目}}`。
   記事の集計は `dedupe_of IS NULL` のみ数える。期間の境界は sinks と同じ `YYYY-MM-DDTHH:MM:SSZ` 形式の文字列で比較する
@@ -207,8 +207,8 @@ NOW (events top20: score/time/country/category/title/source_count) /
 AI (articles, フィルタ: country US,CN,JP × topic llm,agent,robotics 等) /
 Market (主要シンボル最新値の表) / Papers / GitHub (delta 順)。
 既定で開く Overview タブ (`worker/src/overview.ts`) は `/api/overview` だけを使い、KPI タイル (24h/7日の件数、収集の状態)・
-国別の記事数の積み上げ縦棒 (14日)・トピック/イベント種別/GitHub スター増の横棒・マーケットの終値スパークラインを描く。
-グラフは手書きの SVG/HTML (ライブラリ・CDN なし)。色は検証済みのカテゴリ 4 色 (US 青 / CN 橙 / JP 緑 / Other 黄) と
+情報源別の記事数の積み上げ縦棒 (14日)・トピック/イベント種別/GitHub スター増の横棒・マーケットの終値スパークラインを描く。
+グラフは手書きの SVG/HTML (ライブラリ・CDN なし)。色は検証済みのカテゴリ 4 色 (企業・研究ブログ 青 / Hacker News 橙 / 中央銀行 緑 / SEC 開示 黄) と
 単色の横棒で、各グラフにツールチップ (キーボードフォーカスでも表示) と表表示への切り替えを付ける。
 fetch は同一オリジンの /api/*。ダーク基調のシンプルな CSS をインライン。
 
