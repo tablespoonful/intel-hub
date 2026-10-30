@@ -205,7 +205,8 @@ Env bindings (`wrangler.toml`): `DB` (D1), `AI` (Workers AI), secret `INGEST_TOK
 
 ## 5. Dashboard (`worker/src/dashboard.ts` が HTML 文字列を export)
 
-素の HTML+JS (フレームワーク禁止, 外部 CDN 禁止)。タブ:
+素の HTML+JS (フレームワーク禁止, 外部 CDN 禁止)。UI の文言は日本語 (タブ名: 概要 / 速報 / AI記事 / マーケット / 論文 / GitHub)。
+event_type と topic の id は表示名に置き換え、未知の id はそのまま表示する。タブ (内部 id):
 NOW (events top20: score/time/country/category/title/source_count) /
 AI (articles, フィルタ: country US,CN,JP × topic llm,agent,robotics 等) /
 Market (主要シンボル最新値の表) / Papers / GitHub (delta 順)。
@@ -222,7 +223,7 @@ iOS は Safari の「ホーム画面に追加」)。資産はすべて Worker �
 
 - Service Worker (`/sw.js`) は同一オリジン GET をすべて **network-first** で処理し、成功応答を
   キャッシュする。キャッシュはオフライン時のフォールバック専用で、オンライン時は常に最新を表示する。
-- キャッシュから返した応答には `X-Intel-Hub-Offline: 1` を付け、Dashboard は「cached data」と表示する。
+- キャッシュから返した応答には `X-Intel-Hub-Offline: 1` を付け、Dashboard は「オフライン: 保存済みのデータを表示しています」と表示する。
   キャッシュも無い場合は 503 `{ok:false,error:"offline"}` (同ヘッダ付き) を返す。
 - キャッシュ名 `intel-hub-v<N>` を上げると、次回 activate 時に旧キャッシュを全削除する。
 - アイコンは `py -m scripts.gen_pwa_icons` で `worker/src/assets/` に生成 (コミット済み、デザイン変更時のみ)。

@@ -52,7 +52,7 @@
 
 - **Dashboard**: Worker URL を開く (NOW / AI / Market / Papers / GitHub)
   - アプリとして使う: PC は Edge/Chrome のアドレスバーの「インストール」、iPhone は Safari の共有 →「ホーム画面に追加」
-  - オフライン時は最後に表示したタブのデータを「offline: showing cached data」付きで表示する
+  - オフライン時は最後に表示したタブのデータを「オフライン: 保存済みのデータを表示しています」付きで表示する
 - **ヘルスチェック**: `GET /api/health`
   - `last_runs` : collector ごとの最終実行
   - `failure_count_24h` : 直近24時間の失敗数

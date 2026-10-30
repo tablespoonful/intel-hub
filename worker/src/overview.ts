@@ -3,7 +3,7 @@
  * from GET /api/overview. Hand-drawn SVG / HTML only (no chart library, no CDN).
  *
  * The three strings are spliced into DASHBOARD_HTML; OVERVIEW_JS runs inside the
- * dashboard's IIFE and uses its helpers (fmtTime, fetchJson).
+ * dashboard's IIFE and uses its helpers (fmtTime, fetchJson, eventLabel, topicLabel).
  * Colors follow the dataviz palette's dark steps, validated against the panel
  * surface #161b22 (categorical slots 1-4 pass all adjacent CVD / contrast checks).
  */
@@ -68,7 +68,7 @@ export const OVERVIEW_CSS = `
 
 export const OVERVIEW_HTML = `
   <section class="tab active" id="tab-overview">
-    <div class="status" id="overview-status">loading...</div>
+    <div class="status" id="overview-status">読み込み中…</div>
     <div class="ov-kpis" id="ov-kpis"></div>
     <div class="ov-grid">
       <div class="card span2" id="card-volume">
@@ -422,7 +422,7 @@ export const OVERVIEW_JS = `
       li.appendChild(h("span", "score", Math.round(Number(e.importance) || 0)));
       var body = h("div");
       body.appendChild(h("div", "etitle", e.title || ""));
-      body.appendChild(h("div", "emeta", [e.event_type, e.country, fmtTime(e.occurred_at), "ソース " + (e.source_count || 1)].filter(Boolean).join(" · ")));
+      body.appendChild(h("div", "emeta", [eventLabel(e.event_type), e.country, fmtTime(e.occurred_at), "ソース " + (e.source_count || 1)].filter(Boolean).join(" · ")));
       li.appendChild(body);
       ul.appendChild(li);
     });
@@ -434,8 +434,8 @@ export const OVERVIEW_JS = `
     if (!d) return;
     renderKpis(d);
     renderVolume(d);
-    renderBars("card-topics", (d.topics_7d || []).map(function (r) { return { label: r.topic, value: r.n }; }), " 件", "この7日間のトピック付き記事はまだありません");
-    renderBars("card-events", (d.event_types_7d || []).map(function (r) { return { label: r.event_type, value: r.n }; }), " 件", "この7日間のイベントはまだありません");
+    renderBars("card-topics", (d.topics_7d || []).map(function (r) { return { label: topicLabel(r.topic), value: r.n }; }), " 件", "この7日間のトピック付き記事はまだありません");
+    renderBars("card-events", (d.event_types_7d || []).map(function (r) { return { label: eventLabel(r.event_type), value: r.n }; }), " 件", "この7日間のイベントはまだありません");
     renderMarkets(d);
     renderTopEvents(d);
     renderBars("card-repos", (d.repo_movers_7d || []).map(function (r) { return { label: r.full_name, value: r.delta, href: r.url, prefix: "+" }; }), " stars", "7日間でスターが増えたリポジトリはまだありません");
