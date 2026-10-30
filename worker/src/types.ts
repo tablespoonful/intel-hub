@@ -48,6 +48,15 @@ export interface IngestItem {
   payload?: Record<string, unknown> | null;
 }
 
+/** markets.yaml symbol definition (dev-spec §3 market_symbols[]) */
+export interface IngestMarketSymbol {
+  canonical: string;
+  name?: string | null;
+  asset?: string | null;
+  country?: string | null;
+  providers?: Record<string, string> | null;
+}
+
 export interface IngestMarketPrice {
   symbol: string;
   ts: string;
@@ -96,6 +105,7 @@ export interface IngestCollectorRun {
 export interface IngestPayload {
   sources?: IngestSource[];
   items?: IngestItem[];
+  market_symbols?: IngestMarketSymbol[];
   market_prices?: IngestMarketPrice[];
   macro_values?: IngestMacroValue[];
   events?: IngestEvent[];

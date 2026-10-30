@@ -143,6 +143,7 @@ Header: `Authorization: Bearer {INTEL_HUB_INGEST_TOKEN}`, `Content-Type: applica
       "raw_hash","payload": {}
     }
   ],
+  "market_symbols": [{ "canonical","name","asset","country","providers":{} }],  // markets.yaml の symbols。market_prices がある回だけ送る
   "market_prices": [{ "symbol","ts","interval","open","high","low","close","volume","provider" }],
   "macro_values":  [{ "series_id","name","source","country","date","value" }],
   "events": [{ "event_type","title","summary","occurred_at","country","importance","topics":[],"entities":[],"source_count" }],
@@ -157,6 +158,8 @@ Worker 側 upsert 規則:
 - kind→テーブル: article/hn/filing→articles, paper→papers, repo→repositories(+repo_snapshots に毎回スナップ),
   model→models, video→videos。いずれも UNIQUE キーで `INSERT ... ON CONFLICT ... DO UPDATE` (score, 数値系は更新)。
 - `ai_status="pending"` は score >= ai_threshold のアイテムに Python 側で設定済み。
+- `market_symbols`: `ON CONFLICT(canonical) DO UPDATE` (name/asset/country/providers が変わったときだけ書く)。
+  `market_prices` の symbol が market_symbols に無いときは、FK 用に name=symbol, asset='unknown' の仮行を `INSERT OR IGNORE` する。
 
 ## 4. Worker API (TypeScript)
 
