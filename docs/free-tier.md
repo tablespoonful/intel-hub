@@ -9,11 +9,12 @@
 |---|---|---|---|
 | Workers Free | 100,000 req/日, CPU 10ms/req | ingest ~36回/日 + API/Dashboard 閲覧 (数百/日) | 99%+ |
 | D1 Free | rows read 500万/日, write 10万/日, 5GB | write: 数千〜1万rows/日, read: 数万/日 | 90%+ |
-| Workers AI Free | 10,000 Neurons/日 (超過はエラー、課金なし) | 評価: 1日2回 × 最大20件 × llama-3.1-8b / タイトル翻訳: 毎時 × 最大20件 × m2m100 (約2 Neurons/件 → 最大約1,000/日) | 十分 (件数上限で保護) |
+| Workers AI Free | 10,000 Neurons/日 (超過はエラー、課金なし) | 評価: 1日2回 × 最大20件 × llama-3.1-8b / タイトル翻訳: 毎時 × 最大20件 × gemma-4-26b-a4b-it (最大約6 Neurons/件 → 最大約2,900/日) | 十分 (件数上限で保護) |
 
 - 出典: developers.cloudflare.com/workers/platform/limits/ , /d1/platform/limits/ , /workers-ai/platform/pricing/
 - cron トリガーは無料アカウント 5 個まで → 本システムは 1 Worker に 2 cron 定義 (AI 評価: 1日2回 / タイトル翻訳: 毎時)。
-- m2m100 の料金は 31,050 Neurons/100万トークン (入出力とも)。2026-10 時点で検索結果から確認 (developers.cloudflare.com/workers-ai/platform/pricing/)。
+- gemma-4-26b-a4b-it の料金は入力 9,091 / 出力 27,273 Neurons/100万トークン。Workers Free で利用可と changelog に明記。
+  (2026-10 確認: developers.cloudflare.com/workers-ai/platform/pricing/ , /changelog/product/workers-ai/)
 - D1 は 1 リクエストあたり 50 クエリ制限あり → ingest はバッチ (`db.batch`) でまとめている。
 
 ## GitHub Actions
