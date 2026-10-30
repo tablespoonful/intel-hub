@@ -7,6 +7,11 @@ on:
       - "db/schema.sql"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
+    inputs:
+      apply_schema:
+        description: "Re-apply db/schema.sql to D1 (D1 stops serving queries while it runs)"
+        type: boolean
+        default: false
 
 # Never run two deploys at once; a newer push waits for the running one.
 concurrency:
@@ -32,6 +37,8 @@ jobs:
           fi
         working-directory: .
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the schema check below diffs against the push's previous head
       - uses: actions/setup-node@v7
         with:
           node-version: "22"
@@ -39,9 +46,30 @@ jobs:
           cache-dependency-path: worker/package-lock.json
       - run: npm ci
       - run: npm run check
-      # db/schema.sql uses only CREATE ... IF NOT EXISTS, so re-applying it on
-      # every deploy is a no-op for existing tables and adds any new ones.
+      # D1 stops serving queries while a file executes, so apply db/schema.sql
+      # only when this push changed it (or a manual run asks for it). The file
+      # uses only CREATE ... IF NOT EXISTS, so applying it is safe to repeat.
+      - name: Detect schema change
+        id: schema
+        working-directory: .
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          REQUESTED: ${{ inputs.apply_schema }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            changed="${REQUESTED:-false}"
+          elif [ -z "$BEFORE" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            changed=true # new branch or rewritten history: nothing to diff, apply to be safe
+          elif git diff --quiet "$BEFORE" "$GITHUB_SHA" -- db/schema.sql; then
+            changed=false
+          else
+            changed=true
+          fi
+          echo "apply schema: $changed"
+          echo "changed=$changed" >> "$GITHUB_OUTPUT"
       - name: Apply schema to D1
+        if: steps.schema.outputs.changed == 'true'
         run: npx wrangler d1 execute intel-hub --remote --file=../db/schema.sql --yes
       - name: Deploy Worker
         run: npx wrangler deploy

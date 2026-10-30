@@ -38,7 +38,9 @@
 初回デプロイ後は `.github/workflows/deploy.yml` が Worker を更新するので、手元の PC は不要。
 
 - `main` に `worker/**`・`db/schema.sql`・`deploy.yml` の変更が入ると自動実行。Actions タブから手動実行 (workflow_dispatch) も可
-- 手順: 型チェック → `db/schema.sql` を D1 に適用 (`IF NOT EXISTS` のみなので冪等) → `wrangler deploy`
+- 手順: 型チェック → (`db/schema.sql` が変わったときだけ) D1 に適用 → `wrangler deploy`
+  - スキーマ適用中は D1 がクエリを受け付けないため、毎回は流さない。push 前後の差分に `db/schema.sql` が含まれるときだけ適用する
+  - 手動実行では `apply_schema` にチェックを入れたときだけ適用する (スキーマは `IF NOT EXISTS` のみなので何度流しても安全)
 - `INGEST_TOKEN` など Worker の secret は `wrangler deploy` で消えない (再設定不要)
 - 必要な GitHub Secrets:
   - `CLOUDFLARE_API_TOKEN` : dash.cloudflare.com → My Profile → API Tokens → 「Edit Cloudflare Workers」テンプレートに
