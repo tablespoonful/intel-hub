@@ -46,6 +46,7 @@ export const DASHBOARD_HTML: string = `<!doctype html>
   tr:last-child td { border-bottom: none; }
   a { color: var(--accent); text-decoration: none; }
   a:hover { text-decoration: underline; }
+  .orig { color: var(--muted); font-size: 12px; margin-top: 1px; }
   .score { display: inline-block; min-width: 34px; text-align: center; border-radius: 4px; padding: 0 6px; background: #1f6feb33; color: var(--accent); font-weight: 600; }
   .muted { color: var(--muted); }
   .pos { color: var(--good); }
@@ -58,53 +59,54 @@ ${OVERVIEW_CSS}</style>
 <header>
   <h1>intel-hub</h1>
   <nav id="tabs">
-    <button class="tabbtn active" data-tab="overview">Overview</button>
-    <button class="tabbtn" data-tab="now">NOW</button>
-    <button class="tabbtn" data-tab="ai">AI</button>
-    <button class="tabbtn" data-tab="market">Market</button>
-    <button class="tabbtn" data-tab="papers">Papers</button>
+    <button class="tabbtn active" data-tab="overview">概要</button>
+    <button class="tabbtn" data-tab="now">速報</button>
+    <button class="tabbtn" data-tab="ai">AI記事</button>
+    <button class="tabbtn" data-tab="market">マーケット</button>
+    <button class="tabbtn" data-tab="papers">論文</button>
     <button class="tabbtn" data-tab="github">GitHub</button>
   </nav>
 </header>
 <main>
 ${OVERVIEW_HTML}
   <section class="tab" id="tab-now">
-    <div class="tablewrap"><div class="status" id="now-status">loading...</div><table id="now-table"></table></div>
+    <div class="tablewrap"><div class="status" id="now-status">読み込み中…</div><table id="now-table"></table></div>
   </section>
 
   <section class="tab" id="tab-ai">
     <div class="filters" id="ai-country">
-      <span class="flabel">Country:</span>
-      <button class="fbtn active" data-value="">All</button>
-      <button class="fbtn" data-value="US">USA</button>
-      <button class="fbtn" data-value="CN">China</button>
-      <button class="fbtn" data-value="JP">Japan</button>
+      <span class="flabel">国:</span>
+      <button class="fbtn active" data-value="">すべて</button>
+      <button class="fbtn" data-value="US">米国</button>
+      <button class="fbtn" data-value="CN">中国</button>
+      <button class="fbtn" data-value="JP">日本</button>
     </div>
     <div class="filters" id="ai-topic">
-      <span class="flabel">Topic:</span>
-      <button class="fbtn active" data-value="">All</button>
+      <span class="flabel">トピック:</span>
+      <button class="fbtn active" data-value="">すべて</button>
       <button class="fbtn" data-value="llm">LLM</button>
-      <button class="fbtn" data-value="agent">Agent</button>
-      <button class="fbtn" data-value="physical-ai">Physical AI</button>
-      <button class="fbtn" data-value="robotics">Robotics</button>
-      <button class="fbtn" data-value="vla">VLA</button>
+      <button class="fbtn" data-value="agent">エージェント</button>
+      <button class="fbtn" data-value="reasoning">推論</button>
+      <button class="fbtn" data-value="multimodal">マルチモーダル</button>
+      <button class="fbtn" data-value="robotics">ロボティクス</button>
+      <button class="fbtn" data-value="rl">強化学習</button>
     </div>
-    <div class="tablewrap"><div class="status" id="ai-status">loading...</div><table id="ai-table"></table></div>
+    <div class="tablewrap"><div class="status" id="ai-status">読み込み中…</div><table id="ai-table"></table></div>
   </section>
 
   <section class="tab" id="tab-market">
-    <h2 class="subhead">Prices (latest per symbol)</h2>
-    <div class="tablewrap"><div class="status" id="market-status">loading...</div><table id="market-table"></table></div>
-    <h2 class="subhead">Macro (latest per series)</h2>
+    <h2 class="subhead">価格（銘柄ごとの最新値）</h2>
+    <div class="tablewrap"><div class="status" id="market-status">読み込み中…</div><table id="market-table"></table></div>
+    <h2 class="subhead">マクロ指標（系列ごとの最新値）</h2>
     <div class="tablewrap"><table id="macro-table"></table></div>
   </section>
 
   <section class="tab" id="tab-papers">
-    <div class="tablewrap"><div class="status" id="papers-status">loading...</div><table id="papers-table"></table></div>
+    <div class="tablewrap"><div class="status" id="papers-status">読み込み中…</div><table id="papers-table"></table></div>
   </section>
 
   <section class="tab" id="tab-github">
-    <div class="tablewrap"><div class="status" id="github-status">loading...</div><table id="github-table"></table></div>
+    <div class="tablewrap"><div class="status" id="github-status">読み込み中…</div><table id="github-table"></table></div>
   </section>
 </main>
 <div id="tip" role="tooltip"></div>
@@ -132,10 +134,12 @@ ${OVERVIEW_HTML}
     var n = Math.round(Number(v) || 0);
     return '<span class="score">' + n + "</span>";
   }
-  function linkCell(url, title) {
-    var t = esc(title || "(no title)");
-    if (!url) return t;
-    return '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' + t + "</a>";
+  function linkCell(url, title, titleJa) {
+    var ja = titleJa && titleJa !== title ? titleJa : "";
+    var t = esc(ja || title || "（タイトルなし）");
+    var head = url ? '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">' + t + "</a>" : t;
+    // the Japanese title leads; the original stays visible underneath
+    return ja ? head + '<div class="orig">' + esc(title) + "</div>" : head;
   }
   function setStatus(id, msg) {
     var el = document.getElementById(id);
@@ -145,22 +149,22 @@ ${OVERVIEW_HTML}
     }
   }
   function fetchJson(path, statusId, cb) {
-    setStatus(statusId, "loading...");
+    setStatus(statusId, "読み込み中…");
     var offline = false;
     fetch(path)
       .then(function (r) {
         // set by the service worker when the network is unreachable
         offline = r.headers.get("X-Intel-Hub-Offline") === "1";
-        if (!r.ok) throw new Error(offline ? "offline (no cached data)" : "HTTP " + r.status);
+        if (!r.ok) throw new Error(offline ? "オフラインで、保存済みのデータもありません" : "HTTP " + r.status);
         return r.json();
       })
       .then(function (data) {
         setStatus(statusId, "");
         cb(data);
-        if (offline) setStatus(statusId, "offline: showing cached data");
+        if (offline) setStatus(statusId, "オフライン: 保存済みのデータを表示しています");
       })
       .catch(function (err) {
-        setStatus(statusId, "error: " + err.message);
+        setStatus(statusId, "エラー: " + err.message);
       });
   }
   function renderTable(tableId, headers, rowsHtml, statusId) {
@@ -168,7 +172,7 @@ ${OVERVIEW_HTML}
     if (!table) return;
     if (rowsHtml.length === 0) {
       table.innerHTML = "";
-      setStatus(statusId, "no data");
+      setStatus(statusId, "データがありません");
       return;
     }
     var head = "<tr>";
@@ -177,17 +181,30 @@ ${OVERVIEW_HTML}
     table.innerHTML = "<thead>" + head + "</thead><tbody>" + rowsHtml.join("") + "</tbody>";
   }
 
+  // display names for pipeline enums; unknown values fall back to the raw id
+  var EVENT_LABELS = {
+    model_release: "モデル公開", product_launch: "製品発表", research: "研究", funding: "資金調達",
+    robotics_release: "ロボティクス発表", policy: "政策", regulation: "規制", central_bank: "中央銀行",
+    earnings: "決算", partnership: "提携", filing: "開示"
+  };
+  var TOPIC_LABELS = {
+    llm: "LLM", multimodal: "マルチモーダル", reasoning: "推論", agent: "エージェント",
+    robotics: "ロボティクス", rl: "強化学習", markets: "市場", macro: "マクロ経済"
+  };
+  function eventLabel(v) { return v ? EVENT_LABELS[v] || v : ""; }
+  function topicLabel(v) { return v ? TOPIC_LABELS[v] || v : ""; }
+
   function loadNow() {
     fetchJson("/api/events?limit=20", "now-status", function (data) {
       var rows = (data.items || []).map(function (e) {
         return "<tr><td>" + scoreCell(e.importance) +
           '</td><td class="muted">' + esc(fmtTime(e.occurred_at)) +
           "</td><td>" + esc(e.country || "") +
-          '</td><td class="muted">' + esc(e.event_type || "") +
-          '</td><td class="wrap">' + esc(e.title || "") +
+          '</td><td class="muted">' + esc(eventLabel(e.event_type)) +
+          '</td><td class="wrap">' + linkCell("", e.title, e.title_ja) +
           "</td><td>" + esc(e.source_count) + "</td></tr>";
       });
-      renderTable("now-table", ["Score", "Time", "Country", "Type", "Title", "Sources"], rows, "now-status");
+      renderTable("now-table", ["スコア", "日時", "国", "種別", "タイトル", "ソース数"], rows, "now-status");
     });
   }
 
@@ -198,13 +215,13 @@ ${OVERVIEW_HTML}
     fetchJson(q, "ai-status", function (data) {
       var rows = (data.items || []).map(function (a) {
         return "<tr><td>" + scoreCell(a.score) +
-          '</td><td class="wrap">' + linkCell(a.url, a.title) +
+          '</td><td class="wrap">' + linkCell(a.url, a.title, a.title_ja) +
           '</td><td class="muted">' + esc(a.source_id || "") +
           "</td><td>" + esc(a.country || "") +
           '</td><td class="muted">' + esc(a.category || "") +
           '</td><td class="muted">' + esc(fmtTime(a.published_at)) + "</td></tr>";
       });
-      renderTable("ai-table", ["Score", "Title", "Source", "Country", "Category", "Published"], rows, "ai-status");
+      renderTable("ai-table", ["スコア", "タイトル", "情報源", "国", "カテゴリ", "公開日時"], rows, "ai-status");
     });
   }
 
@@ -217,7 +234,7 @@ ${OVERVIEW_HTML}
           '</td><td class="muted">' + esc(fmtTime(p.ts)) +
           '</td><td class="muted">' + esc(p.provider) + "</td></tr>";
       });
-      renderTable("market-table", ["Symbol", "Close", "Interval", "Time", "Provider"], rows, "market-status");
+      renderTable("market-table", ["銘柄", "終値", "足", "日時", "提供元"], rows, "market-status");
       var mrows = (data.macro || []).map(function (m) {
         return "<tr><td>" + esc(m.series_id) +
           '</td><td class="wrap muted">' + esc(m.name || "") +
@@ -225,7 +242,7 @@ ${OVERVIEW_HTML}
           '</td><td class="muted">' + esc(m.date) +
           "</td><td>" + esc(m.country || "") + "</td></tr>";
       });
-      renderTable("macro-table", ["Series", "Name", "Value", "Date", "Country"], mrows, "market-status");
+      renderTable("macro-table", ["系列", "名称", "値", "日付", "国"], mrows, "market-status");
     });
   }
 
@@ -233,11 +250,11 @@ ${OVERVIEW_HTML}
     fetchJson("/api/papers?limit=50", "papers-status", function (data) {
       var rows = (data.items || []).map(function (p) {
         return "<tr><td>" + scoreCell(p.score) +
-          '</td><td class="wrap">' + linkCell(p.url, p.title) +
+          '</td><td class="wrap">' + linkCell(p.url, p.title, p.title_ja) +
           '</td><td class="muted">' + esc(p.arxiv_id || "") +
           '</td><td class="muted">' + esc(fmtTime(p.published_at)) + "</td></tr>";
       });
-      renderTable("papers-table", ["Score", "Title", "arXiv", "Published"], rows, "papers-status");
+      renderTable("papers-table", ["スコア", "タイトル", "arXiv", "公開日時"], rows, "papers-status");
     });
   }
 
@@ -257,7 +274,7 @@ ${OVERVIEW_HTML}
           '<td class="muted">' + esc(r.language || "") +
           '</td><td class="muted">' + esc(r.latest_release || "") + "</td></tr>";
       });
-      renderTable("github-table", ["Repository", "Stars", "d24h", "d7d", "Lang", "Release"], rows, "github-status");
+      renderTable("github-table", ["リポジトリ", "スター", "24時間増減", "7日増減", "言語", "リリース"], rows, "github-status");
     });
   }
 

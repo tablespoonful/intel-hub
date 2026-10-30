@@ -14,6 +14,11 @@ export function json(data: unknown, status = 200): Response {
   });
 }
 
+/** Japanese title from title_translations (null until the hourly translation run reaches the row). */
+const TITLE_JA_EVENT = `(SELECT t.title FROM title_translations t WHERE t.target_kind = 'event' AND t.target_id = events.id AND t.lang = 'ja') AS title_ja`;
+const TITLE_JA_ARTICLE = `(SELECT t.title FROM title_translations t WHERE t.target_kind = 'article' AND t.target_id = articles.id AND t.lang = 'ja') AS title_ja`;
+const TITLE_JA_PAPER = `(SELECT t.title FROM title_translations t WHERE t.target_kind = 'paper' AND t.target_id = papers.id AND t.lang = 'ja') AS title_ja`;
+
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
 
@@ -79,13 +84,13 @@ async function listEvents(env: Env, params: URLSearchParams): Promise<Response> 
   addTopic(f, params.get("topic"));
   addGte(f, "importance", numberOrNull(params.get("min_score")));
   addRange(f, "occurred_at", params.get("from"), params.get("to"));
-  const sql = `SELECT * FROM events${whereSql(f)} ORDER BY importance DESC, occurred_at DESC LIMIT ?`;
+  const sql = `SELECT events.*, ${TITLE_JA_EVENT} FROM events${whereSql(f)} ORDER BY importance DESC, occurred_at DESC LIMIT ?`;
   const res = await env.DB.prepare(sql).bind(...f.binds, limitOf(params)).all();
   return json({ items: res.results });
 }
 
 async function eventDetail(env: Env, id: number): Promise<Response> {
-  const event = await env.DB.prepare(`SELECT * FROM events WHERE id = ?`).bind(id).first();
+  const event = await env.DB.prepare(`SELECT events.*, ${TITLE_JA_EVENT} FROM events WHERE id = ?`).bind(id).first();
   if (!event) return json({ ok: false, error: "event not found" }, 404);
   const [entities, reactions] = await env.DB.batch([
     env.DB.prepare(`SELECT * FROM event_entities WHERE event_id = ?`).bind(id),
@@ -105,7 +110,7 @@ async function listTechnology(env: Env, params: URLSearchParams): Promise<Respon
   addTopic(f, params.get("topic"));
   addGte(f, "score", numberOrNull(params.get("min_score")));
   addRange(f, "published_at", params.get("from"), params.get("to"));
-  const sql = `SELECT * FROM articles${whereSql(f)} ORDER BY score DESC, published_at DESC LIMIT ?`;
+  const sql = `SELECT articles.*, ${TITLE_JA_ARTICLE} FROM articles${whereSql(f)} ORDER BY score DESC, published_at DESC LIMIT ?`;
   const res = await env.DB.prepare(sql).bind(...f.binds, limitOf(params)).all();
   return json({ items: res.results });
 }
@@ -166,7 +171,7 @@ async function listMarkets(env: Env, params: URLSearchParams): Promise<Response>
 async function listPapers(env: Env, params: URLSearchParams): Promise<Response> {
   const f: Filter = { conds: [], binds: [] };
   addGte(f, "score", numberOrNull(params.get("min_score")));
-  const sql = `SELECT * FROM papers${whereSql(f)} ORDER BY score DESC, published_at DESC LIMIT ?`;
+  const sql = `SELECT papers.*, ${TITLE_JA_PAPER} FROM papers${whereSql(f)} ORDER BY score DESC, published_at DESC LIMIT ?`;
   const res = await env.DB.prepare(sql).bind(...f.binds, limitOf(params)).all();
   return json({ items: res.results });
 }
@@ -293,7 +298,7 @@ async function overview(env: Env): Promise<Response> {
        LIMIT 10`
     ).bind(since7d),
     env.DB.prepare(
-      `SELECT id, event_type, title, occurred_at, country, importance, source_count FROM events
+      `SELECT id, event_type, title, ${TITLE_JA_EVENT}, occurred_at, country, importance, source_count FROM events
        WHERE occurred_at >= ?
        ORDER BY importance DESC, occurred_at DESC
        LIMIT 5`

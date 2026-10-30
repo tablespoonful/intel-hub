@@ -184,8 +184,18 @@ Worker 側 upsert 規則:
 - `/manifest.webmanifest`, `/sw.js`, `/icon.svg`, `/icon-192.png`, `/icon-512.png`, `/apple-touch-icon.png` → PWA 資産 (§5, `worker/src/pwa.ts`)
 
 limit 既定 50, 最大 200。パラメータは全て optional。SQL は必ず bind パラメータ。
+`/api/events`・`/api/events/:id`・`/api/technology`・`/api/papers`・`/api/overview` の top_events は、各行に `title_ja`
+(title_translations の日本語訳。未翻訳なら null) を付ける。
 
 Env bindings (`wrangler.toml`): `DB` (D1), `AI` (Workers AI), secret `INGEST_TOKEN`。
+
+### タイトル翻訳 (scheduled cron `37 * * * *`, 毎時)
+
+`worker/src/translate.ts`。直近 7 日の events (importance DESC)・articles (`dedupe_of IS NULL`, score DESC)・papers (score DESC)
+のうち、title_translations に訳が無いか、`source_title` が現在の title と違うものを最大 20 件/回、この順で訳す。
+モデル: `@cf/meta/m2m100-1.2b` (`source_lang: "english"`, `target_lang: "japanese"`)。元から日本語 (かな・漢字を含む) の
+タイトルはモデルを呼ばず `model='source'` で保存する。失敗や日本語を含まない出力は保存せず、次回に再試行する。
+上限 20 件は無料プランの D1 クエリ上限 (50/呼び出し) と Neurons (約 2/件) から決めている。
 
 ### Workers AI (scheduled cron, 1日2回)
 
@@ -205,7 +215,8 @@ Env bindings (`wrangler.toml`): `DB` (D1), `AI` (Workers AI), secret `INGEST_TOK
 
 ## 5. Dashboard (`worker/src/dashboard.ts` が HTML 文字列を export)
 
-素の HTML+JS (フレームワーク禁止, 外部 CDN 禁止)。タブ:
+素の HTML+JS (フレームワーク禁止, 外部 CDN 禁止)。UI の文言は日本語 (タブ名: 概要 / 速報 / AI記事 / マーケット / 論文 / GitHub)。
+event_type と topic の id は表示名に置き換え、未知の id はそのまま表示する。タブ (内部 id):
 NOW (events top20: score/time/country/category/title/source_count) /
 AI (articles, フィルタ: country US,CN,JP × topic llm,agent,robotics 等) /
 Market (主要シンボル最新値の表) / Papers / GitHub (delta 順)。
@@ -222,7 +233,7 @@ iOS は Safari の「ホーム画面に追加」)。資産はすべて Worker �
 
 - Service Worker (`/sw.js`) は同一オリジン GET をすべて **network-first** で処理し、成功応答を
   キャッシュする。キャッシュはオフライン時のフォールバック専用で、オンライン時は常に最新を表示する。
-- キャッシュから返した応答には `X-Intel-Hub-Offline: 1` を付け、Dashboard は「cached data」と表示する。
+- キャッシュから返した応答には `X-Intel-Hub-Offline: 1` を付け、Dashboard は「オフライン: 保存済みのデータを表示しています」と表示する。
   キャッシュも無い場合は 503 `{ok:false,error:"offline"}` (同ヘッダ付き) を返す。
 - キャッシュ名 `intel-hub-v<N>` を上げると、次回 activate 時に旧キャッシュを全削除する。
 - アイコンは `py -m scripts.gen_pwa_icons` で `worker/src/assets/` に生成 (コミット済み、デザイン変更時のみ)。
